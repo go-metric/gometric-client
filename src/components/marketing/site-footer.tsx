@@ -1,0 +1,56 @@
+import Link from "next/link"
+import { BrandWordmark } from "@/components/brand-wordmark"
+import { CurrentYear } from "@/components/current-year"
+import { Container } from "@/components/marketing/primitives"
+import { networkList } from "@/config/networks"
+import { footerNav, siteConfig } from "@/config/site"
+
+export function SiteFooter() {
+  return (
+    <footer className="bg-[#1f1512] text-white">
+      <Container className="grid gap-12 py-16 sm:grid-cols-2 sm:py-20 lg:grid-cols-[1.6fr_repeat(3,1fr)]">
+        <div className="sm:col-span-2 lg:col-span-1">
+          <BrandWordmark size="md" showIcon inverted />
+          <p className="mt-5 max-w-sm text-base leading-relaxed text-white/60">
+            Social management for every brand — plan, inbox, and analytics
+            after you connect your accounts.
+          </p>
+          <ul className="mt-8 flex flex-wrap gap-2">
+            {networkList.map(({ id, name, Icon }) => (
+              <li
+                key={id}
+                title={name}
+                className="inline-flex size-10 items-center justify-center rounded-full border border-white/15 text-white/70"
+              >
+                <Icon className="size-4" />
+                <span className="sr-only">{name}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        {footerNav.map((group) => (
+          <div key={group.title}>
+            <p className="text-sm font-semibold tracking-wide">{group.title}</p>
+            <ul className="mt-5 space-y-3">
+              {group.links.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="text-sm text-white/60 transition-colors hover:text-white">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </Container>
+      <div className="border-t border-white/10">
+        <Container className="flex flex-col gap-2 py-6 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
+          <p>© <CurrentYear /> {siteConfig.name}. All rights reserved.</p>
+          <a href={`mailto:${siteConfig.supportEmail}`} className="hover:text-white">
+            {siteConfig.supportEmail}
+          </a>
+        </Container>
+      </div>
+    </footer>
+  )
+}
