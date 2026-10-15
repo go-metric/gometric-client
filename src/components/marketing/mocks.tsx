@@ -253,7 +253,7 @@ export function InboxMock() {
         <div className="flex-1 space-y-2.5 py-4">
           <p className="max-w-[80%] rounded-2xl rounded-tl-sm bg-muted px-3 py-2 text-[11px]">{active.text}</p>
           <p className="ml-auto max-w-[80%] rounded-2xl rounded-tr-sm bg-brand px-3 py-2 text-[11px] text-white">
-            It&apos;s back Friday at 9am — we&apos;ll DM you the link first!
+            It&apos;s back Friday at 9am. We&apos;ll DM you the link first!
           </p>
           <div className="flex gap-1.5 pt-1">
             {["Thanks! 🙌", "Link in bio", "We'll DM you"].map((r) => (
@@ -351,7 +351,7 @@ export function ComposeMock() {
         </div>
         <div className="rounded-xl border border-border p-3">
           <p className="text-[11px] leading-relaxed">
-            The autumn edit is here 🍂 Rust, olive and warm neutrals — made to layer.
+            The autumn edit is here 🍂 Rust, olive and warm neutrals, made to layer.
             Shop the full drop Friday at 9am.
             <span className="text-brand"> #autumnedit #newin</span>
           </p>

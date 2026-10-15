@@ -1,6 +1,13 @@
 import { addDays, endOfDay, format, parseISO, startOfDay, subDays } from "date-fns"
 import { networks, type NetworkId } from "@/config/networks"
-import { profiles, type BreakdownSpec, type Metrics, type NetworkProfile, type StatSpec } from "@/lib/api/analytics-profiles"
+import {
+  DEMOGRAPHIC_IDS,
+  profiles,
+  type BreakdownSpec,
+  type Metrics,
+  type NetworkProfile,
+  type StatSpec,
+} from "@/lib/api/analytics-profiles"
 import { read } from "@/lib/api/mock/db"
 import type { MockDb } from "@/lib/api/mock/seed"
 import type {
@@ -11,6 +18,7 @@ import type {
   Heatmap,
   Insight,
   Kpi,
+  Monetization,
   NetworkAnalytics,
   NetworkAnalyticsParams,
   NetworkRow,
@@ -19,7 +27,7 @@ import type {
   TimelinePoint,
   TopPost,
 } from "@/lib/api/types"
-import { formatCompact } from "@/lib/format"
+import { formatCompact, formatCurrency } from "@/lib/format"
 import { postTitle } from "@/lib/posts"
 
 /** Deterministic pseudo-random numbers so mock charts don't jump between renders. */
@@ -188,6 +196,63 @@ function buildBreakdown(spec: BreakdownSpec, seed: string): Breakdown {
   }
 }
 
+/** Follower-weighted merge of a demographic breakdown across connected networks. */
+function aggregateDemographic(accounts: NetworkData[], id: string, seed: string, limit?: number): Breakdown | null {
+  const contrib = accounts
+    .map((a) => {
+      const spec = a.profile.breakdowns.find((b) => b.id === id)
+      return spec ? { followers: a.followers, spec } : null
+    })
+    .filter((c): c is { followers: number; spec: BreakdownSpec } => c !== null)
+
+  if (contrib.length === 0) return null
+
+  const totals = new Map<string, number>()
+  let weightSum = 0
+  for (const { followers, spec } of contrib) {
+    const itemTotal = spec.items.reduce((sum, item) => sum + item.weight, 0) || 1
+    weightSum += followers
+    for (const item of spec.items) {
+      totals.set(item.label, (totals.get(item.label) ?? 0) + (item.weight / itemTotal) * followers)
+    }
+  }
+  if (weightSum === 0) return null
+
+  let ranked = [...totals.entries()]
+    .map(([label, value]) => ({ label, value: (value / weightSum) * 100 }))
+    .sort((a, b) => b.value - a.value)
+
+  if (limit && ranked.length > limit) {
+    const head = ranked.slice(0, limit - 1)
+    const other = ranked.slice(limit - 1).reduce((sum, item) => sum + item.value, 0)
+    ranked = [...head, { label: "Other", value: other }]
+  }
+
+  const shares = ranked.map((item) => Math.round(item.value))
+  const drift = 100 - shares.reduce((sum, v) => sum + v, 0)
+  if (shares.length > 0) shares[shares.indexOf(Math.max(...shares))]! += drift
+
+  const template = contrib[0]!.spec
+  // Keep the seed in the signature so overview and network dashboards stay in sync
+  // if we later add jitter to aggregated demographics.
+  void seed
+
+  return {
+    id: template.id,
+    title: template.title,
+    description:
+      contrib.length > 1
+        ? "Averaged across the networks you've connected"
+        : template.description,
+    variant: template.variant,
+    items: ranked.map((item, i) => ({
+      label: item.label,
+      value: shares[i]!,
+      display: `${shares[i]}%`,
+    })),
+  }
+}
+
 function toHeatmap(values: number[][]): Heatmap {
   const max = Math.max(...values.flat(), 0.0001)
   let best = { d: 0, s: 1, v: -1 }
@@ -316,6 +381,14 @@ function summarise(ctx: Ctx, accounts: NetworkData[]): AnalyticsSummary {
     )
   )
 
+  const demoSeed = `${seed}:demographics`
+  const demographics = {
+    age: aggregateDemographic(accounts, "age", demoSeed),
+    gender: aggregateDemographic(accounts, "gender", demoSeed),
+    countries: aggregateDemographic(accounts, "countries", demoSeed, 6),
+    cities: aggregateDemographic(accounts, "cities", demoSeed, 6),
+  }
+
   return {
     kpis: [
       stat("followers", "Total followers", followers),
@@ -330,6 +403,7 @@ function summarise(ctx: Ctx, accounts: NetworkData[]): AnalyticsSummary {
     audience,
     networks: rows,
     contentTypes,
+    demographics,
     heatmap: heat,
     insights: combinedInsights(ctx, rows, heat),
     topPosts: topPostsFor(ctx, accounts),
@@ -462,13 +536,74 @@ function networkInsights(ctx: Ctx, data: NetworkData, breakdowns: Breakdown[], h
   return out.slice(0, 4)
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+/** Share of ad revenue the creator keeps; used to estimate gross CPM from net revenue. */
+const CREATOR_REVENUE_SHARE = 0.55
+
+/**
+ * Earnings for networks that report them. Mirrors what YouTube's Analytics API returns
+ * (estimatedRevenue, RPM, playback-based CPM, monetizedPlaybacks): revenue exists only
+ * for monetized channels, and every figure is an estimate.
+ */
+function buildMonetization(ctx: Ctx, data: NetworkData): Monetization | undefined {
+  const spec = data.profile.monetization
+  if (!spec) return undefined
+  if (data.followers < spec.minFollowers) return { status: "not_monetized", reason: spec.ineligibleReason }
+
+  const seed = `${ctx.key}:${data.account.network}:earnings`
+  const r = random(seed)
+  const rpm = spec.rpm[0] + r() * (spec.rpm[1] - spec.rpm[0])
+  const monetizedRate = spec.monetizedRate[0] + r() * (spec.monetizedRate[1] - spec.monetizedRate[0])
+
+  // Earnings follow views bucket by bucket, so the revenue chart always lines up with the views chart.
+  const timeline = ctx.buckets.map((bucket, i) => ({
+    ...bucket,
+    value: round2((data.series[i]! / 1000) * rpm * (0.88 + r() * 0.24)),
+  }))
+  const revenue = round2(timeline.reduce((sum, p) => sum + p.value, 0))
+  const views = data.metrics.impressions
+  const monetizedPlaybacks = Math.round(views * monetizedRate)
+
+  const stat = (id: string, label: string, value: number, format: Stat["format"]): Kpi =>
+    makeKpi({ id, label, value, format, change: periodChange(random(`${seed}:${id}`), id) }, seed)
+
+  const sources = buildBreakdown(spec.sources, seed)
+  return {
+    status: "monetized",
+    kpis: [
+      stat("revenue", "Estimated revenue", revenue, "currency"),
+      stat("rpm", "RPM", views ? round2((revenue / views) * 1000) : 0, "currency"),
+      stat("cpm", "Playback-based CPM", monetizedPlaybacks ? round2((revenue / CREATOR_REVENUE_SHARE / monetizedPlaybacks) * 1000) : 0, "currency"),
+      stat("monetizedPlaybacks", "Monetized playbacks", monetizedPlaybacks, "number"),
+    ],
+    timelineTitle: "Estimated revenue",
+    timeline,
+    breakdowns: [
+      {
+        ...sources,
+        items: sources.items.map((item) => {
+          const amount = round2((revenue * item.value) / 100)
+          return { label: item.label, value: amount, display: formatCurrency(amount) }
+        }),
+      },
+    ],
+  }
+}
+
 function buildNetworkAnalytics(ctx: Ctx, network: NetworkId, account: SocialAccount | undefined): NetworkAnalytics {
   const profile = profiles[network]
+  const demographicLabels = profile.breakdowns.filter((b) => DEMOGRAPHIC_IDS.has(b.id)).map((b) => b.title)
   const base = {
     network,
     status: account?.status ?? ("disconnected" as const),
     handle: account?.handle ?? null,
-    trackedMetrics: [...profile.kpis, ...profile.highlights].map((s) => s.label),
+    trackedMetrics: [
+      ...profile.kpis.map((s) => s.label),
+      ...(profile.monetization ? ["Estimated revenue", "RPM", "CPM"] : []),
+      ...demographicLabels,
+      ...profile.highlights.map((s) => s.label),
+    ],
   }
 
   if (!account || account.status === "disconnected") {
@@ -499,6 +634,7 @@ function buildNetworkAnalytics(ctx: Ctx, network: NetworkId, account: SocialAcco
     timeline: ctx.buckets.map((bucket, i) => ({ ...bucket, value: data.series[i]! })),
     highlights: data.highlights,
     breakdowns,
+    monetization: buildMonetization(ctx, data),
     heatmap,
     insights: networkInsights(ctx, data, breakdowns, heatmap),
     topPosts: topPostsFor(ctx, [data], 6),

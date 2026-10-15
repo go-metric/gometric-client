@@ -19,11 +19,11 @@ export const networkAnalyticsOptions = (params: NetworkAnalyticsParams) =>
     staleTime: 5 * 60_000,
   })
 
-/** Combined analytics. Keeps the previous range on screen while the next one loads. */
-export const useAnalytics = (params: AnalyticsParams) =>
-  useQuery({ ...analyticsOptions(params), placeholderData: keepPreviousData })
+/** Combined analytics. Keeps the previous range on screen while the next one loads; `enabled: false` skips the request on a network's own page. */
+export const useAnalytics = (params: AnalyticsParams, enabled = true) =>
+  useQuery({ ...analyticsOptions(params), enabled, placeholderData: keepPreviousData })
 
-/** One network's analytics; `enabled: false` skips the request while another tab is active. */
+/** One network's analytics; `enabled: false` skips the request on the combined page. */
 export const useNetworkAnalytics = (params: NetworkAnalyticsParams, enabled = true) =>
   useQuery({
     ...networkAnalyticsOptions(params),

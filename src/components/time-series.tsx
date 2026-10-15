@@ -57,11 +57,15 @@ export function TimeSeriesChart({
   points,
   series,
   formatValue = formatCompact,
+  formatAxis = formatCompact,
   className,
 }: {
   points: TimeSeriesPoint[]
   series: TimeSeriesDef[]
+  /** Tooltip values. */
   formatValue?: (value: number) => string
+  /** Y-axis tick labels. */
+  formatAxis?: (value: number) => string
   className?: string
 }) {
   const uid = useId()
@@ -109,7 +113,7 @@ export function TimeSeriesChart({
             <div key={t} className="pointer-events-none absolute inset-x-0" style={{ top: `${y(t)}%` }}>
               <span className="block border-t border-foreground/8" />
               <span className="absolute right-full mr-2 -translate-y-1/2 text-[11px] text-muted-foreground tabular-nums">
-                {formatCompact(t)}
+                {formatAxis(t)}
               </span>
             </div>
           ))}

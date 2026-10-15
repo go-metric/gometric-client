@@ -58,7 +58,7 @@ function Button({
   )
 }
 
-/** Navigation styled as a button — keeps native link semantics. */
+/** Navigation styled as a button, keeps native link semantics. */
 function ButtonLink({
   className,
   variant = "default",

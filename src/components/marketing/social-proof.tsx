@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 const quotes = [
   {
-    text: "Finally — plan, replies, and metrics without living in seven tabs.",
+    text: "Finally: plan, replies, and metrics without living in seven tabs.",
     name: "Early tester",
     role: "Social media manager",
     initials: "ET",

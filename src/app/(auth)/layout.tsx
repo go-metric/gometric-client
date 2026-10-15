@@ -20,7 +20,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
           className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_60%_at_80%_110%,color-mix(in_srgb,#ff4d00_45%,transparent),transparent_70%)]"
         />
         <p className="max-w-md text-4xl leading-[1.1] font-normal tracking-[-0.03em] xl:text-5xl">
-          Your social, <Accent>calmer</Accent> — all in <Highlight>one tab</Highlight>
+          Your social, <Accent>calmer</Accent>, all in <Highlight>one tab</Highlight>
         </p>
         <div className="relative mx-auto h-72 w-full max-w-md">
           <FollowersCard className="absolute top-0 left-0 -rotate-3 text-foreground" />

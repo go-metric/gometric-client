@@ -10,7 +10,7 @@ import { siteConfig } from "@/config/site"
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Questions, feedback, or partnerships — we'd love to hear from you.",
+  description: "Questions, feedback, or partnerships. We'd love to hear from you.",
 }
 
 const channels = [
@@ -47,7 +47,7 @@ export default function ContactPage() {
             Let&apos;s <Accent>talk</Accent>
           </>
         }
-        description="Questions about gometric, feedback on the product, or a partnership idea — send it our way."
+        description="Questions about gometric, feedback on the product, or a partnership idea. Send it our way."
       />
 
       <section className="pb-24 sm:pb-32">

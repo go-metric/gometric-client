@@ -6,6 +6,22 @@ export function formatCompact(value: number) {
   return compact.format(value)
 }
 
+const usdWhole = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+const usdCents = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const usdCompact = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 })
+
+/** Money in USD: cents for small amounts ("$4.12"), whole dollars in the hundreds, compact beyond 10K ("$12.3K"). */
+export function formatCurrency(value: number) {
+  if (Math.abs(value) >= 10_000) return usdCompact.format(value)
+  return (Math.abs(value) < 100 ? usdCents : usdWhole).format(value)
+}
+
+/** Chart axis labels: no stray ".00" on round tick values. */
+export function formatCurrencyAxis(value: number) {
+  if (Math.abs(value) >= 1000) return usdCompact.format(value)
+  return (Number.isInteger(value) ? usdWhole : usdCents).format(value)
+}
+
 /** 95 -> "1m 35s", 42 -> "42s". */
 export function formatDuration(seconds: number) {
   const total = Math.max(0, Math.round(seconds))

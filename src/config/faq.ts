@@ -34,7 +34,7 @@ export const pricingFaqs: FaqItem[] = [
   },
   {
     q: "Is there a discount for paying yearly?",
-    a: "Yes — yearly billing costs about 20% less than paying month to month.",
+    a: "Yes. Yearly billing costs about 20% less than paying month to month.",
   },
   generalFaqs[4],
 ]

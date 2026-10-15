@@ -601,7 +601,7 @@ function UpdateCardDialog({ open, onClose }: { open: boolean; onClose: () => voi
           <DialogHeader>
             <DialogTitle>Update card</DialogTitle>
             <DialogDescription>
-              Demo only — we store the last four digits. Never send real card numbers to this mock.
+              Demo only. We store the last four digits. Never send real card numbers to this mock.
             </DialogDescription>
           </DialogHeader>
           <FormField id="card-number" label="Card number">

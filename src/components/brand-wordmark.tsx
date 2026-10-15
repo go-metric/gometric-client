@@ -8,7 +8,7 @@ type BrandWordmarkProps = {
   size?: "sm" | "md" | "lg" | "hero"
   /** Kept for call-site compatibility; logos already include the icon. */
   showIcon?: boolean
-  /** Force the light (white-text) logo — for always-dark surfaces like the footer. */
+  /** Force the light (white-text) logo, for always-dark surfaces like the footer. */
   inverted?: boolean
 }
 
@@ -20,7 +20,7 @@ type BrandWordmarkProps = {
 const LOGO_ON_LIGHT_BG = "/brand/logo-on-dark.png"
 const LOGO_ON_DARK_BG = "/brand/logo-on-light.png"
 
-/** Logo asset is 300×79 — keep that aspect ratio. */
+/** Logo asset is 300×79, keep that aspect ratio. */
 const logoSizes = {
   sm: { width: 106, height: 28 },
   md: { width: 137, height: 36 },

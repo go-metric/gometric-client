@@ -57,7 +57,7 @@ function ConnectForm({ network, onDone }: { network: NetworkId; onDone: () => vo
           You&apos;ll sign in with {name} and approve access for your {accountLabel.toLowerCase()}.
         </DialogDescription>
       </DialogHeader>
-      <FormField id="connect-handle" label="Account" hint="Demo only — the real flow reads this from the network.">
+      <FormField id="connect-handle" label="Account" hint="Demo only. The real flow reads this from the network.">
         <Input id="connect-handle" value={handle} onChange={(e) => setHandle(e.target.value)} placeholder="@yourbrand" autoFocus />
       </FormField>
       <p className="flex items-start gap-2 rounded-xl bg-muted p-3 text-xs text-muted-foreground">

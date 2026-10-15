@@ -2,7 +2,7 @@ import { Sparkline } from "@/components/charts"
 import { DeltaBadge } from "@/components/dashboard/ui"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { Kpi, Stat } from "@/lib/api/types"
-import { formatCompact, formatDuration } from "@/lib/format"
+import { formatCompact, formatCurrency, formatDuration } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 export function formatKpi(kpi: Pick<Stat, "value" | "format">) {
@@ -13,6 +13,8 @@ export function formatKpi(kpi: Pick<Stat, "value" | "format">) {
       return formatDuration(kpi.value)
     case "rating":
       return `${kpi.value.toFixed(1)} ★`
+    case "currency":
+      return formatCurrency(kpi.value)
     default:
       return formatCompact(kpi.value)
   }

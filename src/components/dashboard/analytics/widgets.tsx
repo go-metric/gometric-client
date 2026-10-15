@@ -39,14 +39,15 @@ export function BreakdownPanel({
         <p className="-mt-2 mb-4 text-xs text-muted-foreground">{breakdown.description}</p>
       ) : null}
       {breakdown.variant === "donut" ? (
-        <div className="flex items-center gap-5">
+        // Wraps (donut above legend) in narrow cards instead of squeezing the legend labels to nothing.
+        <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-4">
           <DonutChart
             className="w-32 shrink-0 sm:w-36"
             items={items.map((item, i) => ({ label: item.label, value: item.value, color: colors[i % colors.length]! }))}
             centerValue={items[0]?.display}
             centerLabel={items[0]?.label}
           />
-          <ul className="min-w-0 flex-1 space-y-2 text-sm">
+          <ul className="min-w-36 flex-1 space-y-2 text-sm">
             {items.map((item, i) => (
               <li key={item.label} className="flex items-center gap-2">
                 <span className="size-2.5 shrink-0 rounded-full" style={{ background: colors[i % colors.length] }} />
@@ -179,9 +180,10 @@ export function StatTiles({
       {stats.map((stat) => (
         <li
           key={stat.id}
-          className={cn("min-w-0 rounded-2xl border border-border bg-card px-4 py-3.5", cardClassName)}
-          style={accent ? { borderTopColor: accent, borderTopWidth: 2 } : undefined}
+          className={cn("relative min-w-0 rounded-2xl border border-border bg-card px-4 py-3.5", cardClassName)}
         >
+          {/* An inset bar, not a thicker top border, which warps on rounded corners. */}
+          {accent ? <span aria-hidden className="absolute inset-x-5 top-0 h-0.5 rounded-b-full" style={{ background: accent }} /> : null}
           <div className="flex items-center justify-between gap-2">
             <p className="truncate text-xs text-muted-foreground">{stat.label}</p>
             <DeltaBadge value={stat.change} />

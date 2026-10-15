@@ -1,5 +1,5 @@
 /**
- * DRAFT pricing — Metricool-shaped Free / Starter / Advanced (no Custom).
+ * DRAFT pricing: Metricool-shaped Free / Starter / Advanced (no Custom).
  * USD monthly amounts are ~half of Metricool's; yearly is 40% off monthly.
  * Still placeholders.
  */

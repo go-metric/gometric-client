@@ -182,7 +182,7 @@ function CreateBrandDialog({ open, onClose }: { open: boolean; onClose: () => vo
             <Input id="new-brand-name" name="name" required autoFocus placeholder="Acme Co" />
           </FormField>
           <FormField id="new-brand-website" label="Website" hint="Optional.">
-            <Input id="new-brand-website" name="website" type="url" placeholder="https://" />
+            <Input id="new-brand-website" name="website" placeholder="https://" />
           </FormField>
           <FormField id="new-brand-industry" label="Industry">
             <select id="new-brand-industry" name="industry" className={selectClassName} defaultValue="other">

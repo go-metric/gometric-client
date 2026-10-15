@@ -14,7 +14,7 @@ const steps = [
   {
     n: "02",
     title: "Plan the week in one calendar",
-    body: "Drop content on the calendar and schedule across networks at once — with a preview of how each post will look.",
+    body: "Drop content on the calendar and schedule across networks at once, with a preview of how each post will look.",
   },
   {
     n: "03",
@@ -29,7 +29,7 @@ const steps = [
   {
     n: "05",
     title: "Measure what matters",
-    body: "Clear analytics show reach, engagement, and growth — without the noise or the spreadsheets.",
+    body: "Clear analytics show reach, engagement, and growth, without the noise or the spreadsheets.",
   },
 ]
 

@@ -25,7 +25,7 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: {
-    default: "gometric — Plan, inbox, and analytics for social",
+    default: "gometric: Plan, inbox, and analytics for social",
     template: "%s · gometric",
   },
   description:

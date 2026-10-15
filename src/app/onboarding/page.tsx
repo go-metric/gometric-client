@@ -17,7 +17,7 @@ export default function CreateBrandPage() {
             Tell us about your <Accent>brand</Accent>
           </>
         }
-        description="Your brand is the workspace for everything — calendar, inbox, and analytics."
+        description="Your brand is the workspace for everything: calendar, inbox, and analytics."
       />
       <Suspense fallback={<ListSkeleton rows={5} className="mt-10" />}>
         <CreateBrandForm />

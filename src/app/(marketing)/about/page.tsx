@@ -3,12 +3,10 @@ import { Compass, Feather, Lock, Sparkles } from "lucide-react"
 import { FinalCta } from "@/components/marketing/final-cta"
 import { Accent, Container, Eyebrow, Highlight, PageHero } from "@/components/marketing/primitives"
 import { Reveal } from "@/components/marketing/reveal"
-import { NetworkTile } from "@/components/network"
-import { networkList } from "@/config/networks"
 
 export const metadata: Metadata = {
   title: "About",
-  description: "Why we're building gometric — a calmer way to run social for one brand.",
+  description: "Why we're building gometric: a calmer way to run social for one brand.",
 }
 
 const values = [
@@ -21,7 +19,7 @@ const values = [
   {
     Icon: Compass,
     title: "Focused on one brand",
-    body: "No agency sprawl. One workspace, one calendar, one inbox — built around the brand you actually run.",
+    body: "No agency sprawl. One workspace, one calendar, one inbox, built around the brand you actually run.",
     tint: "bg-tint-lime",
   },
   {
@@ -65,7 +63,7 @@ export default function AboutPage() {
             <Reveal delay={0.08} className="space-y-5 text-base leading-relaxed text-muted-foreground sm:text-lg">
               <p>
                 Most social tools are built for agencies juggling dozens of
-                clients. That power comes with noise — permissions, workspaces,
+                clients. That power comes with noise: permissions, workspaces,
                 and settings you&apos;ll never touch.
               </p>
               <p>
@@ -73,13 +71,6 @@ export default function AboutPage() {
                 the networks it lives on, and get straight to the work: planning,
                 replying, and learning from what you post.
               </p>
-              <ul className="flex flex-wrap gap-2 pt-2">
-                {networkList.map((n) => (
-                  <li key={n.id} title={n.name}>
-                    <NetworkTile network={n.id} size="sm" />
-                  </li>
-                ))}
-              </ul>
             </Reveal>
           </div>
         </Container>

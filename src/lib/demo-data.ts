@@ -76,7 +76,7 @@ export type Message = {
 
 export const messages: Message[] = [
   { id: "m1", name: "Lena Moritz", initials: "LM", color: "#8b5cf6", network: "instagram", kind: "comment", text: "Is the autumn edit back in stock? The rust jacket sold out so fast 😭", context: "Comment on “New drop ✦”", time: "2m", unread: true },
-  { id: "m2", name: "Dev Kapoor", initials: "DK", color: "#0ea5e9", network: "linkedin", kind: "comment", text: "Loved the hiring post — just sent my CV!", context: "Comment on “Hiring: Design lead”", time: "14m", unread: true },
+  { id: "m2", name: "Dev Kapoor", initials: "DK", color: "#0ea5e9", network: "linkedin", kind: "comment", text: "Loved the hiring post, just sent my CV!", context: "Comment on “Hiring: Design lead”", time: "14m", unread: true },
   { id: "m3", name: "Sofia Alves", initials: "SA", color: "#f59e0b", network: "facebook", kind: "dm", text: "What time does Saturday start?", context: "Direct message", time: "1h", unread: true },
   { id: "m4", name: "Jo Tanaka", initials: "JT", color: "#10b981", network: "tiktok", kind: "comment", text: "Song name please 🙏", context: "Comment on “Packing orders ASMR”", time: "2h", unread: true },
   { id: "m5", name: "Marcus Bell", initials: "MB", color: "#ef4444", network: "x", kind: "dm", text: "Would love to feature you on our podcast next month.", context: "Direct message", time: "5h" },
@@ -140,7 +140,7 @@ export const topPosts: {
   clicks: string
   gradient: string
 }[] = [
-  { id: "t1", network: "instagram", title: "New drop ✦ — the autumn edit", date: "Oct 13", reach: "182K", engagement: "9.4%", clicks: "4.1K", gradient: "from-orange-500 to-lime-500" },
+  { id: "t1", network: "instagram", title: "New drop ✦: the autumn edit", date: "Oct 13", reach: "182K", engagement: "9.4%", clicks: "4.1K", gradient: "from-orange-500 to-lime-500" },
   { id: "t2", network: "tiktok", title: "Behind the scenes in the workshop", date: "Oct 9", reach: "146K", engagement: "11.2%", clicks: "2.3K", gradient: "from-cyan-500 to-violet-500" },
   { id: "t3", network: "youtube", title: "Workshop vlog #12", date: "Oct 13", reach: "74K", engagement: "7.8%", clicks: "3.2K", gradient: "from-red-500 to-orange-400" },
   { id: "t4", network: "linkedin", title: "Hiring: Design lead", date: "Oct 12", reach: "38K", engagement: "5.1%", clicks: "1.8K", gradient: "from-sky-600 to-indigo-500" },

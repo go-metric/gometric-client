@@ -149,13 +149,13 @@ export type NetworkAnalyticsParams = AnalyticsParams & {
   network: NetworkId
 }
 
-export type StatFormat = "number" | "percent" | "duration" | "rating"
+export type StatFormat = "number" | "percent" | "duration" | "rating" | "currency"
 
 /** A single labelled metric with its change against the previous period. */
 export type Stat = {
   id: string
   label: string
-  /** Seconds for `duration`, 0–5 for `rating`, percent points for `percent`. */
+  /** Seconds for `duration`, 0–5 for `rating`, percent points for `percent`, US dollars for `currency`. */
   value: number
   format: StatFormat
   /** Change vs. the previous period, in percent. */
@@ -250,10 +250,37 @@ export type AnalyticsSummary = {
   audience: { network: NetworkId; followers: number; share: number }[]
   networks: NetworkRow[]
   contentTypes: Breakdown
+  /** Follower-weighted demographics across connected networks. */
+  demographics: {
+    age: Breakdown | null
+    gender: Breakdown | null
+    countries: Breakdown | null
+    cities: Breakdown | null
+  }
   heatmap: Heatmap
   insights: Insight[]
   topPosts: TopPost[]
 }
+
+/**
+ * Earnings a network reports on top of its audience metrics (YouTube today).
+ * Platforms only share revenue for monetized accounts, so there are two shapes:
+ * the figures, or the reason there aren't any. All amounts are estimates in USD.
+ */
+export type Monetization =
+  | {
+      status: "monetized"
+      kpis: Kpi[]
+      timelineTitle: string
+      timeline: TimelinePoint[]
+      /** Revenue split by source; item values are US dollars. */
+      breakdowns: Breakdown[]
+    }
+  | {
+      status: "not_monetized"
+      /** What the account still needs before the network reports earnings. */
+      reason: string
+    }
 
 /** Analytics for a single network, with metrics that only make sense there. */
 export type NetworkAnalytics = {
@@ -268,6 +295,8 @@ export type NetworkAnalytics = {
   timeline: TimelinePoint[]
   highlights: Stat[]
   breakdowns: Breakdown[]
+  /** Present only for networks that report earnings. */
+  monetization?: Monetization
   heatmap: Heatmap
   insights: Insight[]
   topPosts: TopPost[]

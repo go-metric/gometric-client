@@ -41,7 +41,7 @@ export const features: Record<FeatureId, Feature> = {
     ],
     steps: [
       { title: "Create or import", body: "Write a post or pull one from your drafts." },
-      { title: "Drop it on the calendar", body: "Pick a day and time — or take the suggested slot." },
+      { title: "Drop it on the calendar", body: "Pick a day and time, or take the suggested slot." },
       { title: "Publish automatically", body: "gometric posts it for you on every selected network." },
     ],
   },
@@ -102,7 +102,7 @@ export const features: Record<FeatureId, Feature> = {
     title: "Write once, tailor everywhere",
     headline: ["Write once, ", "tailor everywhere", ""],
     summary: "One composer for every network, with live previews.",
-    body: "Draft a post, pick the networks, adjust copy per platform, and schedule it for the best time — all from a single composer.",
+    body: "Draft a post, pick the networks, adjust copy per platform, and schedule it for the best time, all from a single composer.",
     tint: "bg-tint-lime",
     cta: "Explore Compose",
     highlights: [

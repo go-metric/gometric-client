@@ -2,11 +2,17 @@
 
 import { useSearchParams } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
-import { ArrowLeft, CheckCheck, Inbox, MailOpen, MessageSquareText, RotateCcw, Search, Send } from "lucide-react"
+import { ArrowLeft, CheckCheck, ChevronDown, Inbox, MailOpen, MessageSquareText, RotateCcw, Search, Send } from "lucide-react"
 import { EmptyState, ErrorState, ListSkeleton, PageHeader, Segmented } from "@/components/dashboard/ui"
-import { selectClassName } from "@/components/form-field"
 import { NetworkBadge, PersonAvatar } from "@/components/network"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { networkList, networks, type NetworkId } from "@/config/networks"
 import type { Conversation, ConversationStatus } from "@/lib/api/types"
 import { formatAgo, formatWhen } from "@/lib/format"
@@ -93,21 +99,30 @@ export function InboxView() {
                   className="h-9 w-full rounded-xl border border-input bg-muted/50 pr-3 pl-9 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 />
               </label>
-              <label className="w-32 shrink-0">
-                <span className="sr-only">Network</span>
-                <select
-                  value={network}
-                  onChange={(e) => setNetwork(e.target.value as NetworkId | "all")}
-                  className={cn(selectClassName, "h-9 text-sm")}
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  aria-label="Network"
+                  className="inline-flex h-9 w-32 shrink-0 cursor-pointer items-center justify-between gap-1 rounded-xl border border-input bg-muted/50 px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                 >
-                  <option value="all">All networks</option>
-                  {networkList.map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <span className="truncate">{network === "all" ? "All networks" : networks[network].name}</span>
+                  <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-44 rounded-xl p-1.5">
+                  <DropdownMenuRadioGroup
+                    value={network}
+                    onValueChange={(value) => setNetwork(value as NetworkId | "all")}
+                  >
+                    <DropdownMenuRadioItem value="all" className="py-1.5">
+                      All networks
+                    </DropdownMenuRadioItem>
+                    {networkList.map((n) => (
+                      <DropdownMenuRadioItem key={n.id} value={n.id} className="py-1.5">
+                        {n.name}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <div className="flex gap-1 overflow-x-auto [scrollbar-width:none]">
               {kindFilters.map((f) => (

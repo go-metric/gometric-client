@@ -29,7 +29,7 @@ const cards: {
     body: (
       <>
         <strong className="font-semibold text-foreground">Draft once and tailor per network</strong>,
-        reuse saved replies, and let best-time suggestions pick the slot —
+        reuse saved replies, and let best-time suggestions pick the slot,
         so you spend time on the creative work, not the clicking.
       </>
     ),

@@ -24,7 +24,7 @@ export function Platforms() {
               Your networks. <Accent>Linked once.</Accent> Managed together.
             </h2>
             <p className="mt-5 max-w-lg text-pretty text-muted-foreground sm:text-lg">
-              gometric works by connecting the social accounts you already run —
+              gometric works by connecting the social accounts you already run,
               so you can plan, reply, and measure without hopping between apps.
             </p>
             <ul className="mt-8 space-y-3 text-sm text-foreground/80 sm:text-base">

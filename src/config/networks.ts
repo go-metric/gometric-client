@@ -131,3 +131,7 @@ export const networks: Record<NetworkId, Network> = {
 }
 
 export const networkList = Object.values(networks)
+
+export function isNetworkId(value: string | null | undefined): value is NetworkId {
+  return !!value && Object.hasOwn(networks, value)
+}

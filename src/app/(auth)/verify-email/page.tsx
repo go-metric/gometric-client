@@ -23,7 +23,7 @@ export default function VerifyEmailPage() {
       />
       <div className="mt-8 space-y-3">
         <ButtonLink variant="ink" size="lg" className="w-full rounded-xl" href={routes.onboarding.brand}>
-          I&apos;ve verified — continue
+          I&apos;ve verified. Continue
         </ButtonLink>
         <Button variant="outline" size="lg" className="w-full rounded-xl">
           Resend email

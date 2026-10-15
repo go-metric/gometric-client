@@ -26,7 +26,7 @@ export default function PricingPage() {
       >
         <p className="mx-auto inline-flex items-center gap-2 rounded-full border border-dashed border-foreground/30 px-4 py-1.5 text-xs font-medium text-muted-foreground">
           <TriangleAlert className="size-3.5 text-brand" />
-          Draft pricing — tiers and prices are placeholders
+          Draft pricing: tiers and prices are placeholders
         </p>
       </PageHero>
 

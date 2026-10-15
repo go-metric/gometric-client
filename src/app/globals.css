@@ -60,11 +60,11 @@
 }
 
 :root {
-  /* Brand — logo orange ~#FF4D00 */
+  /* Brand, logo orange ~#FF4D00 */
   --brand: #ff4d00;
   --brand-foreground: #ffffff;
 
-  /* Ink — primary CTAs, dark panels, outlines */
+  /* Ink, primary CTAs, dark panels, outlines */
   --ink: #1f1512;
   --ink-foreground: #fff6f0;
   /* Marker highlight behind headline words; text on it stays ink */

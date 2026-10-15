@@ -85,7 +85,7 @@ export function createSeed(now: Date): MockDb {
   // the connected networks, so top posts and "posts published" look healthy.
   const captions: Partial<Record<NetworkId, string[]>> = {
     instagram: [
-      "New drop ✦ — the autumn edit\nRust, olive and warm neutrals.",
+      "New drop ✦: the autumn edit\nRust, olive and warm neutrals.",
       "Studio tour 🎥\nCome see where the magic happens.",
       "Styled three ways\nOne jacket, three very different weeks.",
       "Fresh off the bench\nSamples from this morning's workshop.",

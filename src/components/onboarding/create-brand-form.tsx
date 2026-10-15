@@ -59,7 +59,7 @@ export function CreateBrandForm() {
           <Input id="brand" name="brand" defaultValue={brand?.name ?? ""} placeholder="Northwind Studio" required autoFocus />
         </FormField>
         <FormField id="website" label="Website" hint="Optional.">
-          <Input id="website" name="website" type="url" defaultValue={brand?.website ?? ""} placeholder="https://northwind.co" />
+          <Input id="website" name="website" defaultValue={brand?.website ?? ""} placeholder="https://northwind.co" />
         </FormField>
         <FormField id="industry" label="Industry">
           <select id="industry" name="industry" className={selectClassName} defaultValue={brand?.industry ?? "other"}>

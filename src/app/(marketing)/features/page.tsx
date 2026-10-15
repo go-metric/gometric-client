@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
 
 export const metadata: Metadata = {
   title: "Features",
-  description: "Planner, inbox, analytics, and compose — everything you need to run social for one brand.",
+  description: "Planner, inbox, analytics, and compose: everything you need to run social for one brand.",
 }
 
 export default function FeaturesPage() {
@@ -25,7 +25,7 @@ export default function FeaturesPage() {
             Four tools. <Accent>One calm</Accent> workspace.
           </>
         }
-        description="Plan the week, answer every message, measure what works, and write once for every network — without juggling tabs."
+        description="Plan the week, answer every message, measure what works, and write once for every network, without juggling tabs."
       >
         <nav aria-label="Features" className="flex flex-wrap justify-center gap-2">
           {featureList.map((f) => (

@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
-import { AnalyticsView } from "@/components/dashboard/analytics/analytics-view"
+import { OverviewView } from "@/components/dashboard/analytics/analytics-views"
 
 export const metadata: Metadata = { title: "Analytics" }
 
 export default function AnalyticsPage() {
-  return <AnalyticsView />
+  return <OverviewView />
 }

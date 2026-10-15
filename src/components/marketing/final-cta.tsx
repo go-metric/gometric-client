@@ -18,7 +18,7 @@ export function FinalCta() {
             <InboxCard className="absolute -right-12 bottom-10 hidden rotate-6 text-foreground opacity-90 xl:block" />
 
             <h2 className="mx-auto max-w-3xl text-4xl leading-[1.08] font-normal sm:text-5xl lg:text-6xl">
-              Your social, <Accent>calmer</Accent> — all in{" "}
+              Your social, <Accent>calmer</Accent>, all in{" "}
               <Highlight>one tab</Highlight>
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-lg text-white/70">

@@ -59,6 +59,8 @@ export const routes = {
     compose: "/dashboard/compose",
     inbox: "/dashboard/inbox",
     analytics: "/dashboard/analytics",
+    /** One network's analytics tab, e.g. `/dashboard/analytics/instagram`. */
+    analyticsNetwork: (network: string) => `/dashboard/analytics/${network}`,
     settings: "/dashboard/settings",
     brands: "/dashboard/settings/brands",
     accounts: "/dashboard/settings/accounts",

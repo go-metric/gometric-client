@@ -37,6 +37,20 @@ export type BreakdownSpec = {
   items: { label: string; weight: number }[]
 }
 
+/** How a network that shares earnings (YouTube) turns views into revenue in the mock. */
+export type MonetizationSpec = {
+  /** Creator revenue per 1,000 views (RPM) in USD, as a [low, high] range. */
+  rpm: [number, number]
+  /** Share of views that play an ad. */
+  monetizedRate: [number, number]
+  /** Audience size below which the account isn't eligible to earn. */
+  minFollowers: number
+  /** Shown when the account is below that bar. */
+  ineligibleReason: string
+  /** Revenue by source; weights are relative. */
+  sources: BreakdownSpec
+}
+
 export type NetworkProfile = {
   reachPerFollower: number
   impressionsPerReach: number
@@ -51,17 +65,49 @@ export type NetworkProfile = {
   kpis: StatSpec[]
   highlights: StatSpec[]
   breakdowns: BreakdownSpec[]
+  monetization?: MonetizationSpec
 }
 
 const pct = (r: Rand, min: number, max: number) => Math.round((min + r() * (max - min)) * 10) / 10
 const int = (n: number) => Math.round(n)
 
-const age = (id: string, weights: [number, number, number, number, number]): BreakdownSpec => ({
-  id,
+/** Breakdown ids that describe who the audience is (shown on overview + connect empty state). */
+export const DEMOGRAPHIC_IDS = new Set(["age", "countries", "cities", "gender"])
+
+const age = (weights: [number, number, number, number, number]): BreakdownSpec => ({
+  id: "age",
   title: "Audience age",
   description: "Who you reach, by age group",
   variant: "bars",
   items: ["13–17", "18–24", "25–34", "35–44", "45+"].map((label, i) => ({ label, weight: weights[i]! })),
+})
+
+const countries = (items: [string, number][]): BreakdownSpec => ({
+  id: "countries",
+  title: "Top countries",
+  description: "Where your audience is based",
+  variant: "bars",
+  items: items.map(([label, weight]) => ({ label, weight })),
+})
+
+const cities = (items: [string, number][]): BreakdownSpec => ({
+  id: "cities",
+  title: "Top cities",
+  description: "Cities with the most people in your audience",
+  variant: "bars",
+  items: items.map(([label, weight]) => ({ label, weight })),
+})
+
+const gender = (female: number, male: number, other = Math.max(0, 100 - female - male)): BreakdownSpec => ({
+  id: "gender",
+  title: "Audience gender",
+  description: "How your audience identifies",
+  variant: "donut",
+  items: [
+    { label: "Female", weight: female },
+    { label: "Male", weight: male },
+    { label: "Other", weight: other },
+  ],
 })
 
 export const profiles: Record<NetworkId, NetworkProfile> = {
@@ -109,7 +155,24 @@ export const profiles: Record<NetworkId, NetworkProfile> = {
           { label: "Followers", weight: 39 },
         ],
       },
-      age("age", [2, 28, 38, 19, 13]),
+      age([2, 28, 38, 19, 13]),
+      gender(56, 41, 3),
+      countries([
+        ["United States", 38],
+        ["United Kingdom", 14],
+        ["Canada", 9],
+        ["Australia", 7],
+        ["Germany", 6],
+        ["Other", 26],
+      ]),
+      cities([
+        ["New York", 12],
+        ["London", 9],
+        ["Los Angeles", 8],
+        ["Toronto", 6],
+        ["Sydney", 5],
+        ["Other", 60],
+      ]),
     ],
   },
 
@@ -149,17 +212,24 @@ export const profiles: Record<NetworkId, NetworkProfile> = {
           { label: "Hashtags", weight: 2 },
         ],
       },
-      {
-        id: "gender",
-        title: "Viewer gender",
-        variant: "donut",
-        items: [
-          { label: "Female", weight: 58 },
-          { label: "Male", weight: 40 },
-          { label: "Other", weight: 2 },
-        ],
-      },
-      age("age", [4, 41, 31, 15, 9]),
+      gender(58, 40, 2),
+      age([4, 41, 31, 15, 9]),
+      countries([
+        ["United States", 34],
+        ["Brazil", 12],
+        ["United Kingdom", 10],
+        ["Mexico", 8],
+        ["Indonesia", 7],
+        ["Other", 29],
+      ]),
+      cities([
+        ["Los Angeles", 11],
+        ["São Paulo", 8],
+        ["London", 7],
+        ["Mexico City", 6],
+        ["Jakarta", 5],
+        ["Other", 63],
+      ]),
     ],
   },
 
@@ -170,6 +240,27 @@ export const profiles: Record<NetworkId, NetworkProfile> = {
     clicksPerFollower: 0.22,
     growthRate: 0.012,
     timelineTitle: "Views",
+    // YouTube Partner Program: 1,000 subscribers plus watch-time or Shorts-view thresholds.
+    monetization: {
+      rpm: [2.8, 5.4],
+      monetizedRate: [0.55, 0.72],
+      minFollowers: 1000,
+      ineligibleReason:
+        "YouTube only reports earnings for channels in the YouTube Partner Program. You need 1,000 subscribers and either 4,000 public watch hours in the past 12 months or 10M public Shorts views in the past 90 days.",
+      sources: {
+        id: "revenueSources",
+        title: "Revenue by source",
+        description: "Where your estimated earnings come from",
+        variant: "bars",
+        items: [
+          { label: "Ads", weight: 71 },
+          { label: "YouTube Premium", weight: 13 },
+          { label: "Channel memberships", weight: 8 },
+          { label: "Super Chat & Stickers", weight: 5 },
+          { label: "Shopping & other", weight: 3 },
+        ],
+      },
+    },
     peakDays: [0.7, 0.75, 0.8, 0.85, 0.95, 1, 0.9],
     peakSlots: [0.3, 0.45, 0.6, 0.8, 1, 0.9],
     kpis: [
@@ -221,6 +312,24 @@ export const profiles: Record<NetworkId, NetworkProfile> = {
           { label: "Tablet", weight: 3 },
         ],
       },
+      age([1, 16, 32, 28, 23]),
+      gender(47, 51, 2),
+      countries([
+        ["United States", 41],
+        ["United Kingdom", 13],
+        ["India", 11],
+        ["Canada", 8],
+        ["Germany", 6],
+        ["Other", 21],
+      ]),
+      cities([
+        ["New York", 10],
+        ["London", 8],
+        ["Mumbai", 7],
+        ["Toronto", 5],
+        ["Berlin", 4],
+        ["Other", 66],
+      ]),
     ],
   },
 
@@ -283,6 +392,24 @@ export const profiles: Record<NetworkId, NetworkProfile> = {
           { label: "1 star", weight: 3 },
         ],
       },
+      age([0, 8, 24, 33, 35]),
+      gender(52, 46, 2),
+      countries([
+        ["United States", 48],
+        ["United Kingdom", 12],
+        ["Canada", 10],
+        ["Australia", 8],
+        ["Ireland", 5],
+        ["Other", 17],
+      ]),
+      cities([
+        ["Chicago", 14],
+        ["New York", 11],
+        ["London", 9],
+        ["Toronto", 7],
+        ["Melbourne", 6],
+        ["Other", 53],
+      ]),
     ],
   },
 
@@ -333,7 +460,24 @@ export const profiles: Record<NetworkId, NetworkProfile> = {
           { label: "Text", weight: 14 },
         ],
       },
-      age("age", [1, 12, 27, 31, 29]),
+      age([1, 12, 27, 31, 29]),
+      gender(49, 49, 2),
+      countries([
+        ["United States", 36],
+        ["United Kingdom", 11],
+        ["India", 9],
+        ["Brazil", 8],
+        ["Canada", 7],
+        ["Other", 29],
+      ]),
+      cities([
+        ["New York", 9],
+        ["London", 7],
+        ["Mumbai", 6],
+        ["São Paulo", 5],
+        ["Toronto", 4],
+        ["Other", 69],
+      ]),
     ],
   },
 
@@ -384,7 +528,24 @@ export const profiles: Record<NetworkId, NetworkProfile> = {
           { label: "Link", weight: 8 },
         ],
       },
-      age("age", [1, 18, 36, 27, 18]),
+      age([1, 18, 36, 27, 18]),
+      gender(42, 55, 3),
+      countries([
+        ["United States", 40],
+        ["United Kingdom", 15],
+        ["India", 10],
+        ["Canada", 8],
+        ["Japan", 5],
+        ["Other", 22],
+      ]),
+      cities([
+        ["San Francisco", 10],
+        ["London", 9],
+        ["New York", 8],
+        ["Bangalore", 6],
+        ["Toronto", 5],
+        ["Other", 62],
+      ]),
     ],
   },
 
@@ -447,6 +608,24 @@ export const profiles: Record<NetworkId, NetworkProfile> = {
           { label: "Other", weight: 14 },
         ],
       },
+      age([0, 9, 34, 36, 21]),
+      gender(44, 53, 3),
+      countries([
+        ["United States", 45],
+        ["United Kingdom", 14],
+        ["India", 12],
+        ["Canada", 8],
+        ["Germany", 6],
+        ["Other", 15],
+      ]),
+      cities([
+        ["New York", 11],
+        ["London", 9],
+        ["San Francisco", 8],
+        ["Bangalore", 7],
+        ["Toronto", 5],
+        ["Other", 60],
+      ]),
     ],
   },
 
@@ -494,7 +673,24 @@ export const profiles: Record<NetworkId, NetworkProfile> = {
           { label: "Video", weight: 14 },
         ],
       },
-      age("age", [2, 33, 38, 17, 10]),
+      age([2, 33, 38, 17, 10]),
+      gender(54, 43, 3),
+      countries([
+        ["United States", 42],
+        ["United Kingdom", 12],
+        ["Brazil", 9],
+        ["Canada", 8],
+        ["Spain", 5],
+        ["Other", 24],
+      ]),
+      cities([
+        ["Los Angeles", 10],
+        ["New York", 9],
+        ["London", 7],
+        ["São Paulo", 6],
+        ["Toronto", 5],
+        ["Other", 63],
+      ]),
     ],
   },
 
@@ -543,16 +739,24 @@ export const profiles: Record<NetworkId, NetworkProfile> = {
           { label: "Idea pins", weight: 20 },
         ],
       },
-      {
-        id: "gender",
-        title: "Audience gender",
-        variant: "donut",
-        items: [
-          { label: "Female", weight: 71 },
-          { label: "Male", weight: 25 },
-          { label: "Other", weight: 4 },
-        ],
-      },
+      gender(71, 25, 4),
+      age([1, 22, 35, 26, 16]),
+      countries([
+        ["United States", 46],
+        ["United Kingdom", 11],
+        ["Canada", 9],
+        ["Germany", 7],
+        ["France", 5],
+        ["Other", 22],
+      ]),
+      cities([
+        ["New York", 12],
+        ["Los Angeles", 10],
+        ["London", 8],
+        ["Toronto", 6],
+        ["Berlin", 5],
+        ["Other", 59],
+      ]),
     ],
   },
 }

@@ -78,7 +78,7 @@ function BrandForm({ brand }: { brand: Brand }) {
             <Input id="brand-handle" name="handle" defaultValue={brand.handle} placeholder="@brand" />
           </FormField>
           <FormField id="brand-website" label="Website">
-            <Input id="brand-website" name="website" type="url" defaultValue={brand.website} placeholder="https://" />
+            <Input id="brand-website" name="website" defaultValue={brand.website} placeholder="https://" />
           </FormField>
           <FormField id="brand-industry" label="Industry">
             <select id="brand-industry" name="industry" className={selectClassName} defaultValue={brand.industry}>

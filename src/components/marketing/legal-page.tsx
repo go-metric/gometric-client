@@ -21,7 +21,7 @@ export function LegalPage({
         <p className="mt-4 text-muted-foreground">Last updated {updated}</p>
         <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-dashed border-foreground/30 px-4 py-1.5 text-xs font-medium text-muted-foreground">
           <TriangleAlert className="size-3.5 text-brand" />
-          Placeholder text — needs legal review before launch
+          Placeholder text. Needs legal review before launch
         </p>
       </header>
 

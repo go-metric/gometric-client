@@ -27,10 +27,16 @@ export const accountsApi = {
     return write((db) => {
       const brandId = requireActiveBrandId(db)
       const account = findAccount(db, brandId, network)
+      // Seed a realistic audience size when first connecting so demography
+      // and KPIs have something to report for this profile.
+      const followers =
+        account.followers && account.followers > 0
+          ? account.followers
+          : Math.round(2_400 + ((trimmed.length * 997 + network.length * 131) % 8_200))
       Object.assign(account, {
         status: "connected",
         handle: trimmed,
-        followers: account.followers ?? 0,
+        followers,
         connectedAt: nowIso(),
       })
       return account

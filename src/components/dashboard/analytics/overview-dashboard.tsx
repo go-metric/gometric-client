@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { BarChart3 } from "lucide-react"
 import { ChartLegend, DonutChart, ProgressBar } from "@/components/charts"
 import { InsightsPanel, BreakdownPanel, HeatmapPanel, TopPostsPanel } from "@/components/dashboard/analytics/widgets"
@@ -9,7 +10,7 @@ import { EmptyState, ListSkeleton, Panel } from "@/components/dashboard/ui"
 import { NetworkTile } from "@/components/network"
 import { TimeSeriesChart } from "@/components/time-series"
 import { networkThemes } from "@/config/network-themes"
-import { networks, type NetworkId } from "@/config/networks"
+import { networks } from "@/config/networks"
 import { routes } from "@/config/site"
 import type { AnalyticsRange, AnalyticsSummary, NetworkRow } from "@/lib/api/types"
 import { formatCompact, formatChange } from "@/lib/format"
@@ -19,15 +20,7 @@ function ChartSkeleton({ className }: { className?: string }) {
   return <div className={cn("animate-pulse rounded-2xl bg-muted", className)} />
 }
 
-export function OverviewDashboard({
-  data,
-  range,
-  onSelectNetwork,
-}: {
-  data: AnalyticsSummary | undefined
-  range: AnalyticsRange
-  onSelectNetwork: (network: NetworkId) => void
-}) {
+export function OverviewDashboard({ data, range }: { data: AnalyticsSummary | undefined; range: AnalyticsRange }) {
   if (data && data.networks.length === 0) {
     return (
       <Panel>
@@ -92,7 +85,7 @@ export function OverviewDashboard({
         action={<span className="hidden text-xs text-muted-foreground sm:block">Select a network for its full dashboard</span>}
         bodyClassName="px-0 pb-2 sm:px-0"
       >
-        {data ? <NetworkTable rows={data.networks} onSelect={onSelectNetwork} /> : <ListSkeleton rows={4} className="px-5 sm:px-6" />}
+        {data ? <NetworkTable rows={data.networks} /> : <ListSkeleton rows={4} className="px-5 sm:px-6" />}
       </Panel>
 
       <div className="grid gap-4 xl:grid-cols-3">
@@ -102,6 +95,40 @@ export function OverviewDashboard({
           <BreakdownPanel breakdown={data.contentTypes} />
         ) : (
           <Panel title="Engagement rate by content type"><ListSkeleton rows={4} /></Panel>
+        )}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {data ? (
+          <>
+            {data.demographics.age ? (
+              <BreakdownPanel breakdown={data.demographics.age} />
+            ) : (
+              <Panel title="Audience age"><ListSkeleton rows={5} /></Panel>
+            )}
+            {data.demographics.gender ? (
+              <BreakdownPanel breakdown={data.demographics.gender} />
+            ) : (
+              <Panel title="Audience gender"><ListSkeleton rows={3} /></Panel>
+            )}
+            {data.demographics.countries ? (
+              <BreakdownPanel breakdown={data.demographics.countries} />
+            ) : (
+              <Panel title="Top countries"><ListSkeleton rows={5} /></Panel>
+            )}
+            {data.demographics.cities ? (
+              <BreakdownPanel breakdown={data.demographics.cities} />
+            ) : (
+              <Panel title="Top cities"><ListSkeleton rows={5} /></Panel>
+            )}
+          </>
+        ) : (
+          <>
+            <Panel title="Audience age"><ListSkeleton rows={5} /></Panel>
+            <Panel title="Audience gender"><ListSkeleton rows={3} /></Panel>
+            <Panel title="Top countries"><ListSkeleton rows={5} /></Panel>
+            <Panel title="Top cities"><ListSkeleton rows={5} /></Panel>
+          </>
         )}
       </div>
 
@@ -119,7 +146,7 @@ const tableColumns = [
   { key: "posts", label: "Posts" },
 ] as const
 
-function NetworkTable({ rows, onSelect }: { rows: NetworkRow[]; onSelect: (network: NetworkId) => void }) {
+function NetworkTable({ rows }: { rows: NetworkRow[] }) {
   const bestEngagement = Math.max(...rows.map((r) => r.engagementRate))
   const bestGrowth = Math.max(...rows.map((r) => r.growthRate))
 
@@ -139,10 +166,9 @@ function NetworkTable({ rows, onSelect }: { rows: NetworkRow[]; onSelect: (netwo
           {rows.map((row) => (
             <tr key={row.network} className="border-b border-border/60 last:border-0 hover:bg-muted/40">
               <td className="px-5 py-3 sm:px-6">
-                <button
-                  type="button"
-                  onClick={() => onSelect(row.network)}
-                  className="flex cursor-pointer items-center gap-3 text-left font-medium"
+                <Link
+                  href={routes.dashboard.analyticsNetwork(row.network)}
+                  className="flex items-center gap-3 text-left font-medium hover:underline"
                 >
                   <NetworkTile network={row.network} size="sm" />
                   <span>
@@ -153,7 +179,7 @@ function NetworkTable({ rows, onSelect }: { rows: NetworkRow[]; onSelect: (netwo
                       </span>
                     ) : null}
                   </span>
-                </button>
+                </Link>
               </td>
               <td className="px-3 py-3 text-right font-medium">{formatCompact(row.followers)}</td>
               <td className={cn("px-3 py-3 text-right", row.growthRate === bestGrowth ? "font-semibold text-emerald-700 dark:text-emerald-300" : "font-medium")}>
