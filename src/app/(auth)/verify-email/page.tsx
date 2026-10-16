@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { MailCheck } from "lucide-react"
 import { AuthFooter, AuthHeading } from "@/components/auth/auth-heading"
-import { Button, ButtonLink } from "@/components/ui/button"
-import { routes } from "@/config/site"
+import { VerifyEmailPanel } from "@/components/auth/verify-email-panel"
 import { demoBrand } from "@/lib/demo-data"
 
 export const metadata: Metadata = { title: "Verify your email" }
@@ -24,18 +24,13 @@ export default async function VerifyEmailPage({ searchParams }: Props) {
           <>
             We sent a verification link to{" "}
             <strong className="font-semibold text-foreground">{email}</strong>. Click it to activate your
-            account.
+            account. In local development the service also prints the link in its console.
           </>
         }
       />
-      <div className="mt-8 space-y-3">
-        <ButtonLink variant="ink" size="lg" className="w-full rounded-xl" href={routes.onboarding.brand}>
-          I&apos;ve verified. Continue
-        </ButtonLink>
-        <Button variant="outline" size="lg" className="w-full rounded-xl">
-          Resend email
-        </Button>
-      </div>
+      <Suspense fallback={<p className="mt-8 text-sm text-muted-foreground">Loading…</p>}>
+        <VerifyEmailPanel fallbackEmail={email} />
+      </Suspense>
       <AuthFooter>Can&apos;t find it? Check your spam folder, or wait a minute and resend.</AuthFooter>
     </>
   )

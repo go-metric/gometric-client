@@ -21,6 +21,8 @@ import { captionFor, validatePost } from "@/lib/posts"
 import { useLinkedAccounts } from "@/lib/queries/accounts"
 import { useBilling } from "@/lib/queries/billing"
 import { useCreatePost, usePost, useUpdatePost } from "@/lib/queries/posts"
+import { errorMessage } from "@/lib/api/errors"
+import { mediaApi } from "@/lib/api/media"
 import { activeBrand } from "@/lib/api/workspace"
 import { useWorkspace } from "@/lib/queries/workspace"
 import { cn } from "@/lib/utils"
@@ -144,18 +146,13 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
       toast.error(`${f.name} is larger than 1.5 MB.`)
       return false
     })
-    const items = await Promise.all(
-      accepted.map(
-        (file) =>
-          new Promise<PostMedia>((resolve, reject) => {
-            const reader = new FileReader()
-            reader.onload = () => resolve({ id: crypto.randomUUID(), name: file.name, url: String(reader.result) })
-            reader.onerror = () => reject(reader.error)
-            reader.readAsDataURL(file)
-          })
-      )
-    )
-    setMedia((prev) => [...prev, ...items])
+    if (!accepted.length) return
+    try {
+      const items = await Promise.all(accepted.map((file) => mediaApi.upload(file)))
+      setMedia((prev) => [...prev, ...items])
+    } catch (error) {
+      toast.error(errorMessage(error))
+    }
   }
 
   const buildInput = (status: PostStatus): PostInput => {

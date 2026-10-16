@@ -1,6 +1,7 @@
 "use client"
 
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { setActiveBrandId } from "@/lib/api/http"
 import { activeBrand, workspaceApi } from "@/lib/api/workspace"
 import type { Brand, NotificationPrefs, Profile, Workspace } from "@/lib/api/types"
 import { queryKeys } from "@/lib/queries/keys"
@@ -35,7 +36,7 @@ function invalidateBrandScoped(queryClient: ReturnType<typeof useQueryClient>) {
 export function useCreateBrand() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (input: Omit<Brand, "id">) => workspaceApi.createBrand(input),
+    mutationFn: (input: Omit<Brand, "id" | "locked">) => workspaceApi.createBrand(input),
     onSuccess: (workspace) => {
       queryClient.setQueryData(queryKeys.workspace, workspace)
       return invalidateBrandScoped(queryClient)
@@ -71,6 +72,7 @@ export function useSetActiveBrand() {
       await queryClient.cancelQueries({ queryKey: queryKeys.workspace })
       const previous = queryClient.getQueryData<Workspace>(queryKeys.workspace)
       if (previous) {
+        setActiveBrandId(brandId)
         queryClient.setQueryData<Workspace>(queryKeys.workspace, {
           ...previous,
           activeBrandId: brandId,
@@ -78,7 +80,10 @@ export function useSetActiveBrand() {
       }
       return { previous }
     },
-    onError: (_error, _id, context) => queryClient.setQueryData(queryKeys.workspace, context?.previous),
+    onError: (_error, _id, context) => {
+      setActiveBrandId(context?.previous?.activeBrandId ?? null)
+      queryClient.setQueryData(queryKeys.workspace, context?.previous)
+    },
     onSuccess: (workspace) => {
       queryClient.setQueryData(queryKeys.workspace, workspace)
       return invalidateBrandScoped(queryClient)
@@ -116,13 +121,3 @@ export function useUpdateNotificationPrefs() {
   })
 }
 
-/** Clears the mock DB and refreshes every domain query. Demo-only. */
-export function useResetDemo() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => workspaceApi.resetDemo(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries()
-    },
-  })
-}

@@ -1,7 +1,9 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 import { CreditCard, Link2, LogOut, Settings } from "lucide-react"
+import { toast } from "sonner"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,13 +14,30 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { routes } from "@/config/site"
+import { authApi } from "@/lib/api/auth"
+import { errorMessage } from "@/lib/api/errors"
+import { setAccessToken, setActiveBrandId } from "@/lib/api/http"
 import { initials } from "@/lib/format"
 import { useWorkspace } from "@/lib/queries/workspace"
 
 export function UserMenu() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { data } = useWorkspace()
   const profile = data?.profile
+
+  const logout = async () => {
+    try {
+      await authApi.logout()
+    } catch (error) {
+      toast.error(errorMessage(error))
+    } finally {
+      setAccessToken(null)
+      setActiveBrandId(null)
+      queryClient.clear()
+      router.push(routes.login)
+    }
+  }
 
   return (
     <DropdownMenu>
@@ -49,7 +68,7 @@ export function UserMenu() {
           Billing
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="py-1.5" variant="destructive" onClick={() => router.push(routes.login)}>
+        <DropdownMenuItem className="py-1.5" variant="destructive" onClick={() => void logout()}>
           <LogOut />
           Log out
         </DropdownMenuItem>

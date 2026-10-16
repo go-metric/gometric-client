@@ -1,11 +1,7 @@
 import type { Metadata } from "next"
 import { BookOpen, Mail, MessageSquare } from "lucide-react"
-import { DemoForm } from "@/components/demo-form"
-import { FormField, selectClassName } from "@/components/form-field"
+import { ContactForm } from "@/components/marketing/contact-form"
 import { Accent, Container, PageHero } from "@/components/marketing/primitives"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { siteConfig } from "@/config/site"
 
 export const metadata: Metadata = {
@@ -65,35 +61,7 @@ export default function ContactPage() {
             ))}
           </ul>
 
-          <DemoForm
-            id="contact-form"
-            className="scroll-mt-24 rounded-[2rem] border border-border bg-card p-6 sm:p-10"
-          >
-            <h2 className="text-2xl font-semibold sm:text-3xl">Send a message</h2>
-            <p className="mt-2 text-sm text-muted-foreground">All fields are required.</p>
-            <div className="mt-8 grid gap-5 sm:grid-cols-2">
-              <FormField id="name" label="Name">
-                <Input id="name" name="name" autoComplete="name" placeholder="Emily Carter" required />
-              </FormField>
-              <FormField id="email" label="Email">
-                <Input id="email" name="email" type="email" autoComplete="email" placeholder="you@brand.com" required />
-              </FormField>
-              <FormField id="topic" label="Topic" className="sm:col-span-2">
-                <select id="topic" name="topic" className={selectClassName} defaultValue="question">
-                  <option value="question">General question</option>
-                  <option value="feedback">Product feedback</option>
-                  <option value="billing">Billing</option>
-                  <option value="partnership">Partnership</option>
-                </select>
-              </FormField>
-              <FormField id="message" label="Message" className="sm:col-span-2">
-                <Textarea id="message" name="message" rows={6} placeholder="How can we help?" required />
-              </FormField>
-            </div>
-            <Button type="submit" variant="ink" size="lg" className="mt-8 w-full rounded-2xl sm:w-auto sm:px-8">
-              Send message
-            </Button>
-          </DemoForm>
+          <ContactForm />
         </Container>
       </section>
     </>

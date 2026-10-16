@@ -33,10 +33,16 @@ function useAccountMutation<TVars>(mutationFn: (vars: TVars) => Promise<unknown>
   })
 }
 
-export const useConnectAccount = () =>
-  useAccountMutation(({ network, handle }: { network: NetworkId; handle: string }) =>
-    accountsApi.connect(network, handle)
-  )
+/** Starts OAuth and navigates to the provider (or mock callback) URL. */
+export function useStartOAuth() {
+  return useMutation({
+    mutationFn: async (network: NetworkId) => {
+      const redirectUrl = await accountsApi.startOAuth(network)
+      window.location.href = redirectUrl
+      return redirectUrl
+    },
+  })
+}
 
 export const useReconnectAccount = () => useAccountMutation((network: NetworkId) => accountsApi.reconnect(network))
 

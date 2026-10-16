@@ -1,69 +1,23 @@
 import type { NetworkId } from "@/config/networks"
-import { ApiError } from "@/lib/api/errors"
-import { nowIso, read, requireActiveBrandId, write } from "@/lib/api/mock/db"
-import type { MockDb } from "@/lib/api/mock/seed"
-
-function findAccount(db: MockDb, brandId: string, network: NetworkId) {
-  const account = db.accounts.find((a) => a.brandId === brandId && a.network === network)
-  if (!account) throw new ApiError("Unknown network for this brand.", 404)
-  return account
-}
+import { api } from "@/lib/api/http"
+import type { SocialAccount } from "@/lib/api/types"
 
 export const accountsApi = {
   list() {
-    return read((db) => {
-      const brandId = db.workspace.activeBrandId
-      return db.accounts.filter((a) => a.brandId === brandId)
-    })
+    return api<SocialAccount[]>("/accounts")
   },
 
-  /**
-   * Mock of the OAuth callback. The real flow redirects to the network's
-   * consent screen and the service stores the token.
-   */
-  async connect(network: NetworkId, handle: string) {
-    const trimmed = handle.trim()
-    if (!trimmed) throw new ApiError("Enter the account handle.", 422)
-    return write((db) => {
-      const brandId = requireActiveBrandId(db)
-      const account = findAccount(db, brandId, network)
-      // Seed a realistic audience size when first connecting so demography
-      // and KPIs have something to report for this profile.
-      const followers =
-        account.followers && account.followers > 0
-          ? account.followers
-          : Math.round(2_400 + ((trimmed.length * 997 + network.length * 131) % 8_200))
-      Object.assign(account, {
-        status: "connected",
-        handle: trimmed,
-        followers,
-        connectedAt: nowIso(),
-      })
-      return account
-    })
+  /** Starts OAuth (mock provider on the service → redirects back to accounts settings). */
+  async startOAuth(network: NetworkId) {
+    const { redirectUrl } = await api<{ redirectUrl: string }>(`/accounts/${network}/oauth/start`)
+    return redirectUrl
   },
 
   reconnect(network: NetworkId) {
-    return write((db) => {
-      const brandId = requireActiveBrandId(db)
-      const account = findAccount(db, brandId, network)
-      if (account.status === "disconnected") throw new ApiError("Connect this account first.", 409)
-      Object.assign(account, { status: "connected", connectedAt: nowIso() })
-      return account
-    })
+    return api<SocialAccount>(`/accounts/${network}/reconnect`, { method: "POST" })
   },
 
   disconnect(network: NetworkId) {
-    return write((db) => {
-      const brandId = requireActiveBrandId(db)
-      const account = findAccount(db, brandId, network)
-      Object.assign(account, { status: "disconnected", handle: null, followers: null, connectedAt: null })
-      for (const post of db.posts) {
-        if (post.brandId === brandId && post.status !== "published") {
-          post.networks = post.networks.filter((n) => n !== network)
-        }
-      }
-      return account
-    })
+    return api<SocialAccount>(`/accounts/${network}`, { method: "DELETE" })
   },
 }

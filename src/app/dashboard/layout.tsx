@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { RequireAuth } from "@/components/auth/require-auth"
 import { AppShell } from "@/components/dashboard/app-shell"
 
 export const metadata: Metadata = {
@@ -6,5 +7,9 @@ export const metadata: Metadata = {
 }
 
 export default function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
-  return <AppShell>{children}</AppShell>
+  return (
+    <RequireAuth mode="dashboard">
+      <AppShell>{children}</AppShell>
+    </RequireAuth>
+  )
 }

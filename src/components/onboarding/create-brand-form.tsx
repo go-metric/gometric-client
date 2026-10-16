@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation"
 import type { FormEvent } from "react"
 import { ArrowRight } from "lucide-react"
-import { ListSkeleton } from "@/components/dashboard/ui"
+import { toast } from "sonner"
+import { ErrorState, ListSkeleton } from "@/components/dashboard/ui"
 import { FormField, selectClassName } from "@/components/form-field"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Button } from "@/components/ui/button"
@@ -16,10 +17,17 @@ import { useCreateBrand, useUpdateBrand, useWorkspace } from "@/lib/queries/work
 
 export function CreateBrandForm() {
   const router = useRouter()
-  const { data } = useWorkspace()
+  const { data, error, refetch } = useWorkspace()
   const create = useCreateBrand()
   const update = useUpdateBrand()
 
+  if (error) {
+    return (
+      <div className="mt-10">
+        <ErrorState error={error} onRetry={() => refetch()} />
+      </div>
+    )
+  }
   if (!data) return <ListSkeleton rows={5} className="mt-10" />
   const brand = activeBrand(data)
   const pending = create.isPending || update.isPending
@@ -35,7 +43,10 @@ export function CreateBrandForm() {
       industry: String(form.get("industry")),
       timezone: String(form.get("timezone")),
     }
-    const go = () => router.push(routes.onboarding.connect)
+    const go = () => {
+      toast.success(brand ? "Brand updated" : "Brand created")
+      router.push(routes.onboarding.connect)
+    }
     if (brand) {
       update.mutate({ id: brand.id, ...payload }, { onSuccess: go })
     } else {

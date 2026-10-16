@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { ConnectAccountDialog } from "@/components/accounts/connect-account-dialog"
@@ -17,16 +18,26 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { networks, type NetworkId } from "@/config/networks"
+import { isNetworkId, networks, type NetworkId } from "@/config/networks"
 import { formatCompact } from "@/lib/format"
 import { useAccounts, useDisconnectAccount, useReconnectAccount } from "@/lib/queries/accounts"
 
 export function AccountsSettings() {
+  const router = useRouter()
+  const params = useSearchParams()
   const { data, error, refetch } = useAccounts()
   const reconnect = useReconnectAccount()
   const disconnect = useDisconnectAccount()
   const [connecting, setConnecting] = useState<NetworkId | null>(null)
   const [disconnecting, setDisconnecting] = useState<NetworkId | null>(null)
+
+  useEffect(() => {
+    const connected = params.get("connected")
+    if (!connected || !isNetworkId(connected)) return
+    toast.success(`${networks[connected].name} connected`)
+    void refetch()
+    router.replace("/dashboard/settings/accounts")
+  }, [params, refetch, router])
 
   const connected = data?.filter((a) => a.status !== "disconnected") ?? []
   const available = data?.filter((a) => a.status === "disconnected") ?? []

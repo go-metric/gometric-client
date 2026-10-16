@@ -1,20 +1,16 @@
-import { read, write } from "@/lib/api/mock/db"
+import { api } from "@/lib/api/http"
+import type { AppNotification } from "@/lib/api/types"
 
 export const notificationsApi = {
   list() {
-    return read((db) => [...db.notifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+    return api<AppNotification[]>("/notifications")
   },
 
   markRead(id: string) {
-    return write((db) => {
-      const n = db.notifications.find((item) => item.id === id)
-      if (n) n.read = true
-    })
+    return api<void>(`/notifications/${id}/read`, { method: "POST" })
   },
 
   markAllRead() {
-    return write((db) => {
-      for (const n of db.notifications) n.read = true
-    })
+    return api<void>("/notifications/read-all", { method: "POST" })
   },
 }
