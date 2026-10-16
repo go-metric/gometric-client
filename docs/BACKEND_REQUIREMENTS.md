@@ -33,10 +33,7 @@ UI (Next.js)
 
 Client env:
 
-```bash
-NEXT_PUBLIC_API_BASE_URL=https://api.gometric.social
-# or http://localhost:4000 for local service
-```
+Client API host is configured in `gometric-client/src/config/api.ts` (live: `https://api.gometric.social`).
 
 ---
 

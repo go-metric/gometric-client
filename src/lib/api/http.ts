@@ -1,3 +1,4 @@
+import { apiBaseUrl as configuredApiBaseUrl } from "@/config/api"
 import { ApiError } from "@/lib/api/errors"
 import { routes } from "@/config/site"
 
@@ -7,9 +8,9 @@ const REMEMBER_KEY = "gometric:remember"
 let activeBrandId: string | null = null
 let handlingUnauthorized = false
 
-/** Base URL from env. Empty → API calls throw until configured. */
+/** Active API origin from `src/config/api.ts`. */
 export function apiBaseUrl() {
-  return (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "")
+  return configuredApiBaseUrl
 }
 
 export function isRemoteApi() {
@@ -97,7 +98,7 @@ type ApiInit = RequestInit & {
 export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
   const base = apiBaseUrl()
   if (!base) {
-    throw new ApiError("API base URL is not configured. Set NEXT_PUBLIC_API_BASE_URL.", 500)
+    throw new ApiError("API base URL is not configured. Check src/config/api.ts.", 500)
   }
 
   const { rawBody, skipAuthRedirect, headers: initHeaders, ...rest } = init
