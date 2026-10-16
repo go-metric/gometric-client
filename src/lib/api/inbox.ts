@@ -1,11 +1,12 @@
 import { ApiError } from "@/lib/api/errors"
-import { newId, nowIso, read, write } from "@/lib/api/mock/db"
+import { assertBrandUnlocked, newId, nowIso, read, write } from "@/lib/api/mock/db"
 import type { MockDb } from "@/lib/api/mock/seed"
 import type { ConversationStatus } from "@/lib/api/types"
 
-function findConversation(db: MockDb, id: string) {
+function findConversation(db: MockDb, id: string, { allowLocked = false } = {}) {
   const conversation = db.conversations.find((c) => c.id === id)
   if (!conversation) throw new ApiError("This conversation no longer exists.", 404)
+  if (!allowLocked) assertBrandUnlocked(db, conversation.brandId)
   return conversation
 }
 
@@ -19,9 +20,10 @@ export const inboxApi = {
     })
   },
 
+  /** Read state is allowed on locked brands: opening a thread marks it read. */
   setUnread(id: string, unread: boolean) {
     return write((db) => {
-      const conversation = findConversation(db, id)
+      const conversation = findConversation(db, id, { allowLocked: true })
       conversation.unread = unread
       return conversation
     })

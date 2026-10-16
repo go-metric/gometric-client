@@ -16,6 +16,11 @@ export type Brand = {
   website: string
   industry: string
   timezone: string
+  /**
+   * Set when the plan includes fewer brands than the workspace has. Locked brands
+   * stay readable but can't be edited, posted from, or connected until upgrade.
+   */
+  locked?: boolean
 }
 
 export type Profile = {
@@ -340,6 +345,8 @@ export type Subscription = {
   currentPeriodStart: string
   currentPeriodEnd: string
   cancelAtPeriodEnd: boolean
+  /** Brand that stays active on Free once a scheduled cancellation takes effect. */
+  keepBrandId?: string | null
   scheduledChange: ScheduledPlanChange | null
   trialEndsAt: string | null
 }

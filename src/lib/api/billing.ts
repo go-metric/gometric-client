@@ -1,8 +1,10 @@
-import { addMonths, addYears, differenceInCalendarDays, startOfMonth } from "date-fns"
+import { differenceInCalendarDays, startOfMonth } from "date-fns"
+import { networkList } from "@/config/networks"
 import type { BillingCycle, PlanId } from "@/config/pricing"
-import { defaultBrandAllowance, plans, priceForAllowance } from "@/config/pricing"
+import { analyticsHistoryDays, defaultBrandAllowance, plans, priceForAllowance } from "@/config/pricing"
 import { ApiError } from "@/lib/api/errors"
 import { newId, nowIso, write } from "@/lib/api/mock/db"
+import { applyDueChanges, enforceBrandAllowance, periodEndFrom } from "@/lib/api/mock/lifecycle"
 import type { MockDb } from "@/lib/api/mock/seed"
 import type {
   BillingDetails,
@@ -13,11 +15,12 @@ import type {
   PaymentMethod,
   Subscription,
 } from "@/lib/api/types"
+import { isValidEmail } from "@/lib/validation"
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const planRank: Record<PlanId, number> = { free: 0, starter: 1, advanced: 2 }
 
-const NETWORK_CAP = 6
+/** Every plan can connect all supported networks; caps stay in sync with `config/networks`. */
+const NETWORK_CAP = networkList.length
 
 type PlanLimits = {
   scheduledPosts: number | null
@@ -26,7 +29,8 @@ type PlanLimits = {
 }
 
 export const planLimits: Record<PlanId, PlanLimits> = {
-  free: { scheduledPosts: 20, analyticsDays: 30, networks: NETWORK_CAP },
+  free: { scheduledPosts: 20, analyticsDays: analyticsHistoryDays("free"), networks: NETWORK_CAP },
+  // Paid plans: null = unlimited in the usage meter; the picker still caps at analyticsHistoryDays.
   starter: { scheduledPosts: null, analyticsDays: null, networks: NETWORK_CAP },
   advanced: { scheduledPosts: null, analyticsDays: null, networks: NETWORK_CAP },
 }
@@ -37,10 +41,6 @@ function planName(id: PlanId) {
 
 function priceFor(planId: PlanId, cycle: BillingCycle, brandAllowance: number) {
   return priceForAllowance(planId, cycle, brandAllowance)
-}
-
-function periodEndFrom(start: Date, cycle: BillingCycle) {
-  return cycle === "yearly" ? addYears(start, 1) : addMonths(start, 1)
 }
 
 function pushNotification(db: MockDb, title: string, body: string) {
@@ -54,43 +54,6 @@ function pushNotification(db: MockDb, title: string, body: string) {
   })
 }
 
-function applyDueChanges(db: MockDb) {
-  const sub = db.billing.subscription
-  const now = new Date()
-  const periodEnd = new Date(sub.currentPeriodEnd)
-  if (now < periodEnd) return
-
-  if (sub.cancelAtPeriodEnd) {
-    Object.assign(sub, {
-      planId: "free" as const,
-      cycle: "monthly" as const,
-      brandAllowance: 1,
-      status: "canceled" as const,
-      cancelAtPeriodEnd: false,
-      scheduledChange: null,
-      trialEndsAt: null,
-      currentPeriodStart: nowIso(),
-      currentPeriodEnd: periodEndFrom(now, "monthly").toISOString(),
-    })
-    return
-  }
-
-  if (sub.scheduledChange) {
-    const next = sub.scheduledChange
-    const start = now
-    Object.assign(sub, {
-      planId: next.planId,
-      cycle: next.cycle,
-      brandAllowance: next.brandAllowance,
-      status: "active" as const,
-      scheduledChange: null,
-      cancelAtPeriodEnd: false,
-      currentPeriodStart: start.toISOString(),
-      currentPeriodEnd: periodEndFrom(start, next.cycle).toISOString(),
-    })
-  }
-}
-
 function computeUsage(db: MockDb): BillingUsage {
   const now = new Date()
   const monthStart = startOfMonth(now).toISOString()
@@ -98,10 +61,10 @@ function computeUsage(db: MockDb): BillingUsage {
   const limits = planLimits[sub.planId]
   const brandId = db.workspace.activeBrandId
 
+  // Free plan limit is "scheduled posts this month" — published posts don't consume the quota.
   const scheduledPosts = db.posts.filter((p) => {
-    if (p.status !== "scheduled" && p.status !== "published") return false
-    const at = p.scheduledAt ?? p.publishedAt
-    return !!at && at >= monthStart
+    if (p.status !== "scheduled") return false
+    return !!p.scheduledAt && p.scheduledAt >= monthStart
   }).length
 
   const connectedNetworks = db.accounts.filter(
@@ -186,6 +149,7 @@ function applyPlanNow(sub: Subscription, planId: PlanId, cycle: BillingCycle, br
     brandAllowance,
     status: "active" as const,
     cancelAtPeriodEnd: false,
+    keepBrandId: null,
     scheduledChange: null,
     trialEndsAt: null,
     currentPeriodStart: start.toISOString(),
@@ -205,6 +169,11 @@ export type ChangePlanInput = {
   planId: PlanId
   cycle: BillingCycle
   brandAllowance: number
+}
+
+export type CancelSubscriptionInput = {
+  /** Required when the workspace has more brands than the Free plan allows. */
+  keepBrandId?: string
 }
 
 export type UpdatePaymentMethodInput = {
@@ -252,6 +221,7 @@ export const billingApi = {
 
       if (upgrading || cycleUpgrade) {
         applyPlanNow(sub, planId, cycle, brandAllowance)
+        enforceBrandAllowance(db, brandAllowance)
         const amount = priceFor(planId, cycle, brandAllowance)
         if (amount > 0) {
           addInvoice(db, {
@@ -323,7 +293,7 @@ export const billingApi = {
     if (patch.companyName !== undefined && !patch.companyName.trim()) {
       throw new ApiError("Company name is required.", 422)
     }
-    if (patch.billingEmail !== undefined && !emailPattern.test(patch.billingEmail)) {
+    if (patch.billingEmail !== undefined && !isValidEmail(patch.billingEmail)) {
       throw new ApiError("Enter a valid billing email.", 422)
     }
     if (patch.country !== undefined && !patch.country.trim()) {
@@ -342,19 +312,35 @@ export const billingApi = {
     })
   },
 
-  async cancelSubscription() {
+  async cancelSubscription({ keepBrandId }: CancelSubscriptionInput = {}) {
     return write((db) => {
       applyDueChanges(db)
       const sub = db.billing.subscription
       if (sub.planId === "free") throw new ApiError("The Free plan can't be canceled.", 409)
       if (sub.cancelAtPeriodEnd) throw new ApiError("Cancellation is already scheduled.", 409)
 
+      // Free includes fewer brands, so the user decides which one stays active.
+      const brands = db.workspace.brands
+      const freeAllowance = defaultBrandAllowance("free")
+      let keep: string | null = brands[0]?.id ?? null
+      if (brands.length > freeAllowance) {
+        if (!keepBrandId || !brands.some((b) => b.id === keepBrandId)) {
+          throw new ApiError("Choose which brand stays active on the Free plan.", 422)
+        }
+        keep = keepBrandId
+      }
+
       sub.cancelAtPeriodEnd = true
+      sub.keepBrandId = keep
       sub.scheduledChange = null
+      const lockedCount = Math.max(brands.length - freeAllowance, 0)
       pushNotification(
         db,
         "Subscription canceled",
-        `You'll keep ${planName(sub.planId)} until the end of the billing period.`
+        `You'll keep ${planName(sub.planId)} until the end of the billing period.` +
+          (lockedCount > 0
+            ? ` Then ${lockedCount} brand${lockedCount === 1 ? "" : "s"} will be locked (view-only, not deleted).`
+            : "")
       )
       return snapshot(db)
     })
@@ -368,10 +354,13 @@ export const billingApi = {
         throw new ApiError("There's nothing to resume.", 409)
       }
       if (sub.status === "canceled") {
-        applyPlanNow(sub, "starter", "monthly", defaultBrandAllowance("starter"))
-        pushNotification(db, "Subscription resumed", "Welcome back to Starter.")
+        const allowance = defaultBrandAllowance("starter")
+        applyPlanNow(sub, "starter", "monthly", allowance)
+        enforceBrandAllowance(db, allowance)
+        pushNotification(db, "Subscription resumed", "Welcome back to Starter. Your locked brands are unlocked.")
       } else {
         sub.cancelAtPeriodEnd = false
+        sub.keepBrandId = null
         pushNotification(db, "Subscription resumed", `Your ${planName(sub.planId)} plan will renew as usual.`)
       }
       return snapshot(db)

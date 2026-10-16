@@ -4,8 +4,8 @@ import type { MockDb } from "@/lib/api/mock/seed"
 import type { Post, PostInput, PostListParams } from "@/lib/api/types"
 import { postDate, postTitle, validatePost } from "@/lib/posts"
 
-function findPost(db: MockDb, id: string) {
-  const brandId = requireActiveBrandId(db)
+function findPost(db: MockDb, id: string, { allowLocked = false } = {}) {
+  const brandId = requireActiveBrandId(db, { allowLocked })
   const post = db.posts.find((p) => p.id === id && p.brandId === brandId)
   if (!post) throw new ApiError("This post no longer exists.", 404)
   return post
@@ -46,7 +46,7 @@ export const postsApi = {
   },
 
   get(id: string) {
-    return read((db) => findPost(db, id))
+    return read((db) => findPost(db, id, { allowLocked: true }))
   },
 
   async create(input: PostInput) {

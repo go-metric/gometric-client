@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, Plus } from "lucide-react"
+import { Building2, Lock, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { EmptyState, ErrorState, ListSkeleton, Panel } from "@/components/dashboard/ui"
 import { FormField, selectClassName } from "@/components/form-field"
@@ -51,6 +51,7 @@ export function BrandsSettings() {
 
   const allowance = billing.data?.subscription.brandAllowance ?? 1
   const atLimit = data.brands.length >= allowance
+  const lockedCount = data.brands.filter((b) => b.locked).length
 
   return (
     <div className="space-y-4">
@@ -76,6 +77,17 @@ export function BrandsSettings() {
             </>
           ) : null}
         </p>
+
+        {lockedCount > 0 ? (
+          <p className="mb-4 flex gap-2.5 rounded-2xl bg-amber-500/12 p-3 text-sm text-amber-800 dark:text-amber-200">
+            <Lock className="mt-0.5 size-4 shrink-0" />
+            <span>
+              {lockedCount} brand{lockedCount === 1 ? " is" : "s are"} locked because your plan includes {allowance}.
+              Locked brands keep all their data and stay viewable, but can&apos;t be edited, posted from or
+              connected until you upgrade.
+            </span>
+          </p>
+        ) : null}
 
         {data.brands.length === 0 ? (
           <EmptyState
@@ -105,10 +117,21 @@ export function BrandsSettings() {
                           Active
                         </span>
                       ) : null}
+                      {brand.locked ? (
+                        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                          <Lock className="size-3" />
+                          Locked
+                        </span>
+                      ) : null}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">{brand.handle || "No handle"}</p>
                   </div>
                   <div className="flex w-full justify-end gap-2 sm:w-auto">
+                    {brand.locked ? (
+                      <ButtonLink href={routes.dashboard.billing} size="sm" variant="outline">
+                        Upgrade to unlock
+                      </ButtonLink>
+                    ) : null}
                     {!active ? (
                       <SwitchBrandButton brandId={brand.id} name={brand.name} />
                     ) : null}

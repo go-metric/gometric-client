@@ -19,6 +19,7 @@ import type { Post, PostInput, PostMedia, PostStatus, SocialAccount } from "@/li
 import { initials } from "@/lib/format"
 import { captionFor, validatePost } from "@/lib/posts"
 import { useLinkedAccounts } from "@/lib/queries/accounts"
+import { useBilling } from "@/lib/queries/billing"
 import { useCreatePost, usePost, useUpdatePost } from "@/lib/queries/posts"
 import { activeBrand } from "@/lib/api/workspace"
 import { useWorkspace } from "@/lib/queries/workspace"
@@ -89,9 +90,11 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
   const router = useRouter()
   const now = useNow()
   const { data: workspace } = useWorkspace()
+  const { data: billing } = useBilling()
   const brand = workspace ? activeBrand(workspace) : null
   const create = useCreatePost()
   const update = useUpdatePost()
+  const showBestTimes = billing ? billing.subscription.planId !== "free" : false
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -178,12 +181,13 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
     else create.mutate(input, { onSuccess })
   }
 
-  const suggestions = now
-    ? SUGGESTED_HOURS.flatMap((h) => {
-        const today = startOfMinute(setMinutes(setHours(now, h), 0))
-        return [today > now ? today : addDays(today, 1)]
-      }).sort((a, b) => a.getTime() - b.getTime())
-    : []
+  const suggestions =
+    showBestTimes && now
+      ? SUGGESTED_HOURS.flatMap((h) => {
+          const today = startOfMinute(setMinutes(setHours(now, h), 0))
+          return [today > now ? today : addDays(today, 1)]
+        }).sort((a, b) => a.getTime() - b.getTime())
+      : []
 
   return (
     <>

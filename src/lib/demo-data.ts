@@ -159,6 +159,6 @@ export const connectedAccounts: {
   { network: "facebook", handle: "Northwind Studio", followers: "5.4k", status: "connected" },
   { network: "x", handle: "@northwindhq", followers: "4.5k", status: "connected" },
   { network: "threads", handle: "@northwind.studio", followers: "3.1k", status: "connected" },
-  { network: "google_business", handle: "Northwind Studio", followers: "—", status: "disconnected" },
-  { network: "pinterest", handle: "Northwind Studio", followers: "—", status: "disconnected" },
+  { network: "google_business", handle: "Northwind Studio", followers: "1.2k", status: "connected" },
+  { network: "pinterest", handle: "Northwind Studio", followers: "9.4k", status: "connected" },
 ]

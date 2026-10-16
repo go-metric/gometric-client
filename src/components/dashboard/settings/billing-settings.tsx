@@ -8,6 +8,7 @@ import {
   CreditCard,
   Download,
   FileText,
+  Lock,
   Minus,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -43,7 +44,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { countries } from "@/config/countries"
 import { comparison, defaultBrandAllowance, plans, type BillingCycle } from "@/config/pricing"
-import { planName, planRank, priceDifference, priceFor } from "@/lib/api/billing"
+import { planLimits, planName, planRank, priceDifference, priceFor } from "@/lib/api/billing"
 import type {
   BillingDetails,
   BillingSnapshot,
@@ -64,6 +65,7 @@ import {
   useUpdateBillingDetails,
   useUpdatePaymentMethod,
 } from "@/lib/queries/billing"
+import { useWorkspace } from "@/lib/queries/workspace"
 import { cn } from "@/lib/utils"
 
 const cycles: { value: BillingCycle; label: string }[] = [
@@ -157,6 +159,11 @@ function CurrentPlanCard({ billing }: { billing: BillingSnapshot }) {
   const price = priceFor(subscription.planId, subscription.cycle, subscription.brandAllowance)
   const resume = useResumeSubscription()
   const cancelScheduled = useCancelScheduledChange()
+  const { data: workspace } = useWorkspace()
+  const brands = workspace?.brands ?? []
+  const keepBrand = brands.find((b) => b.id === subscription.keepBrandId)
+  const pendingLocked = Math.max(brands.length - defaultBrandAllowance("free"), 0)
+  const lockedNow = brands.filter((b) => b.locked).length
 
   return (
     <Panel
@@ -217,8 +224,16 @@ function CurrentPlanCard({ billing }: { billing: BillingSnapshot }) {
         <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm">
             {subscription.cancelAtPeriodEnd
-              ? "Your plan stays active until the period ends."
-              : "Your paid subscription has ended. Resume anytime to get Starter features back."}
+              ? `Your plan stays active until the period ends.${
+                  pendingLocked > 0 && keepBrand
+                    ? ` Then ${keepBrand.name} stays active and ${pendingLocked} other brand${pendingLocked === 1 ? " is" : "s are"} locked.`
+                    : ""
+                }`
+              : `Your paid subscription has ended.${
+                  lockedNow > 0
+                    ? ` ${lockedNow} brand${lockedNow === 1 ? " is" : "s are"} locked (view-only).`
+                    : ""
+                } Resume anytime to get Starter features back${lockedNow > 0 ? " and unlock them" : ""}.`}
           </p>
           <Button
             size="sm"
@@ -763,8 +778,18 @@ function InvoicesSection({ invoices, details }: { invoices: Invoice[]; details: 
 
 function CancelSubscription({ billing }: { billing: BillingSnapshot }) {
   const [open, setOpen] = useState(false)
+  const [keepId, setKeepId] = useState("")
   const cancel = useCancelSubscription()
+  const { data: workspace } = useWorkspace()
   const { subscription } = billing
+
+  const brands = workspace?.brands ?? []
+  const freeBrands = defaultBrandAllowance("free")
+  const lockedCount = Math.max(brands.length - freeBrands, 0)
+  // Default to the brand the user is working in unless they pick another.
+  const selected = brands.some((b) => b.id === keepId) ? keepId : (workspace?.activeBrandId ?? brands[0]?.id ?? "")
+  const ready = !!workspace && (lockedCount === 0 || !!selected)
+  const free = planLimits.free
 
   return (
     <>
@@ -776,25 +801,65 @@ function CancelSubscription({ billing }: { billing: BillingSnapshot }) {
       </div>
 
       <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="data-[size=default]:sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel {planName(subscription.planId)}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your plan stays active until {formatDate(subscription.currentPeriodEnd)}. You can resume anytime before then.
+              Your plan stays active until {formatDate(subscription.currentPeriodEnd)}. After that you move to Free:{" "}
+              {freeBrands} brand{freeBrands === 1 ? "" : "s"}, {free.analyticsDays} days of analytics and{" "}
+              {free.scheduledPosts} scheduled posts a month. You can resume anytime.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {lockedCount > 0 ? (
+            <div className="space-y-3">
+              <div className="flex gap-2.5 rounded-2xl bg-amber-500/12 p-3 text-sm text-amber-800 dark:text-amber-200">
+                <Lock className="mt-0.5 size-4 shrink-0" />
+                <p>
+                  You have {brands.length} brands. {lockedCount} will be <span className="font-semibold">locked</span>:
+                  nothing is deleted, but they become view-only until you upgrade again.
+                </p>
+              </div>
+              <fieldset className="space-y-1.5">
+                <legend className="mb-1.5 text-sm font-medium">Brand to keep active</legend>
+                {brands.map((brand) => (
+                  <label
+                    key={brand.id}
+                    className={cn(
+                      "flex cursor-pointer items-center gap-3 rounded-xl border p-2.5 text-sm transition-colors",
+                      brand.id === selected ? "border-brand bg-brand/5" : "border-border hover:bg-muted/60"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="keep-brand"
+                      className="accent-brand"
+                      checked={brand.id === selected}
+                      onChange={() => setKeepId(brand.id)}
+                    />
+                    <span className="min-w-0 flex-1 truncate font-medium">{brand.name}</span>
+                    <span className="truncate text-xs text-muted-foreground">{brand.handle}</span>
+                  </label>
+                ))}
+              </fieldset>
+            </div>
+          ) : null}
+
           <AlertDialogFooter>
             <AlertDialogCancel>Keep plan</AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              disabled={cancel.isPending}
+              disabled={cancel.isPending || !ready}
               onClick={() =>
-                cancel.mutate(undefined, {
-                  onSuccess: () => {
-                    toast.success("Cancellation scheduled")
-                    setOpen(false)
-                  },
-                })
+                cancel.mutate(
+                  { keepBrandId: lockedCount > 0 ? selected : undefined },
+                  {
+                    onSuccess: () => {
+                      toast.success("Cancellation scheduled")
+                      setOpen(false)
+                    },
+                  }
+                )
               }
             >
               Confirm cancel

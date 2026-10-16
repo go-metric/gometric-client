@@ -7,7 +7,14 @@ import { demoBrand } from "@/lib/demo-data"
 
 export const metadata: Metadata = { title: "Verify your email" }
 
-export default function VerifyEmailPage() {
+type Props = {
+  searchParams: Promise<{ email?: string }>
+}
+
+export default async function VerifyEmailPage({ searchParams }: Props) {
+  const params = await searchParams
+  const email = params.email?.trim() || demoBrand.owner.email
+
   return (
     <>
       <AuthHeading
@@ -16,8 +23,8 @@ export default function VerifyEmailPage() {
         description={
           <>
             We sent a verification link to{" "}
-            <strong className="font-semibold text-foreground">{demoBrand.owner.email}</strong>. Click it to
-            activate your account.
+            <strong className="font-semibold text-foreground">{email}</strong>. Click it to activate your
+            account.
           </>
         }
       />

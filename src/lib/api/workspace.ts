@@ -1,9 +1,8 @@
 import { ApiError } from "@/lib/api/errors"
-import { newId, read, write } from "@/lib/api/mock/db"
+import { assertBrandUnlocked, newId, read, resetDemoData, write } from "@/lib/api/mock/db"
 import { disconnectedAccountsForBrand } from "@/lib/api/mock/seed"
 import type { Brand, NotificationPrefs, Profile, Workspace } from "@/lib/api/types"
-
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+import { isValidEmail } from "@/lib/validation"
 
 export function activeBrand(workspace: Workspace): Brand | null {
   return workspace.brands.find((b) => b.id === workspace.activeBrandId) ?? workspace.brands[0] ?? null
@@ -41,6 +40,7 @@ export const workspaceApi = {
     return write((db) => {
       const brand = db.workspace.brands.find((b) => b.id === brandId)
       if (!brand) throw new ApiError("Brand not found.", 404)
+      assertBrandUnlocked(db, brandId)
       Object.assign(brand, {
         ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
         ...(patch.handle !== undefined ? { handle: patch.handle.trim() } : {}),
@@ -61,7 +61,14 @@ export const workspaceApi = {
       db.posts = db.posts.filter((p) => p.brandId !== brandId)
       db.conversations = db.conversations.filter((c) => c.brandId !== brandId)
       if (db.workspace.activeBrandId === brandId) {
-        db.workspace.activeBrandId = db.workspace.brands[0]?.id ?? ""
+        db.workspace.activeBrandId = (db.workspace.brands.find((b) => !b.locked) ?? db.workspace.brands[0])?.id ?? ""
+      }
+      // Deleting the only usable brand must not leave the workspace fully locked.
+      const remaining = db.workspace.brands
+      if (remaining.length > 0 && remaining.every((b) => b.locked)) {
+        const next = remaining.find((b) => b.id === db.workspace.activeBrandId) ?? remaining[0]
+        delete next.locked
+        db.workspace.activeBrandId = next.id
       }
       return db.workspace
     })
@@ -77,7 +84,7 @@ export const workspaceApi = {
 
   async updateProfile(patch: Partial<Profile>) {
     if (patch.name !== undefined && !patch.name.trim()) throw new ApiError("Name is required.", 422)
-    if (patch.email !== undefined && !emailPattern.test(patch.email)) {
+    if (patch.email !== undefined && !isValidEmail(patch.email)) {
       throw new ApiError("Enter a valid email address.", 422)
     }
     return write((db) => {
@@ -91,5 +98,10 @@ export const workspaceApi = {
       Object.assign(db.workspace.notificationPrefs, patch)
       return db.workspace
     })
+  },
+
+  /** Dev/demo only: wipe localStorage and reseed. Not part of the real service. */
+  resetDemo() {
+    return resetDemoData()
   },
 }

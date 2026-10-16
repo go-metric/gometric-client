@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { Suspense } from "react"
-import { Check, ChevronsUpDown, Plus } from "lucide-react"
+import { Check, ChevronsUpDown, Lock, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { BrandWordmark } from "@/components/brand-wordmark"
 import { dashboardFooterNav, dashboardNav, isNavActive, type DashboardNavItem } from "@/components/dashboard/nav"
@@ -121,6 +121,7 @@ function BrandSwitcher({ onNavigate }: { onNavigate?: () => void }) {
                   {initials(brand.name)}
                 </span>
                 <span className="min-w-0 flex-1 truncate">{brand.name}</span>
+                {brand.locked ? <Lock className="size-3.5 text-amber-600 dark:text-amber-300" aria-label="Locked" /> : null}
                 {isActive ? <Check className="size-4 text-brand" /> : null}
               </DropdownMenuItem>
             )

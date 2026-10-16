@@ -58,6 +58,8 @@ Query keys live in `src/lib/queries/keys.ts` so invalidation stays consistent ac
 
 Demo data resets from **Settings → Danger zone → Reset demo data**. Deleting the workspace clears everything and returns you to onboarding.
 
+Full HTTP contract and user-flow notes for the service team: [`API_REQUIREMENTS.md`](./API_REQUIREMENTS.md).
+
 ## Dashboard capabilities (client-only)
 
 - **Overview**: live KPIs, upcoming posts, recent messages, audience

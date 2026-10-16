@@ -5,9 +5,10 @@
  */
 import { createBillingSeed, createSeed, disconnectedAccountsForBrand, SEED_BRAND_ID, type MockDb } from "@/lib/api/mock/seed"
 import { ApiError } from "@/lib/api/errors"
+import { applyDueChanges } from "@/lib/api/mock/lifecycle"
 import { defaultBrandAllowance, type PlanId } from "@/config/pricing"
 
-const STORAGE_KEY = "gometric:mock-db:v3"
+const STORAGE_KEY = "gometric:mock-db:v4"
 const LATENCY_MS = 250
 
 let db: MockDb | null = null
@@ -109,13 +110,20 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 /** Simulates a GET: resolves a deep copy so callers can't mutate the store. */
 export async function read<T>(select: (db: MockDb) => T): Promise<T> {
   await sleep(LATENCY_MS)
-  return structuredClone(select(load()))
+  return structuredClone(select(loadCurrent()))
+}
+
+/** Loads the store and settles any cancellation / downgrade whose period has ended. */
+function loadCurrent(): MockDb {
+  const current = load()
+  if (applyDueChanges(current)) persist(current)
+  return current
 }
 
 /** Simulates a write: applies the change, persists, and returns a copy of the result. */
 export async function write<T>(apply: (db: MockDb) => T): Promise<T> {
   await sleep(LATENCY_MS)
-  const current = load()
+  const current = loadCurrent()
   const snapshot = structuredClone(current)
   try {
     const result = apply(current)
@@ -130,10 +138,31 @@ export async function write<T>(apply: (db: MockDb) => T): Promise<T> {
 export const newId = () => crypto.randomUUID()
 export const nowIso = () => new Date().toISOString()
 
-export function requireActiveBrandId(database: MockDb) {
+/** Wipe persisted mock data and reseed. Used by Settings → Danger zone. */
+export async function resetDemoData(): Promise<MockDb> {
+  await sleep(LATENCY_MS)
+  if (typeof window === "undefined") {
+    throw new ApiError("The mock API only runs in the browser.", 500)
+  }
+  db = createSeed(new Date())
+  persist(db)
+  return structuredClone(db)
+}
+
+/** Throws when the brand is locked by the current plan. Call before any write to brand data. */
+export function assertBrandUnlocked(database: MockDb, brandId: string) {
+  const brand = database.workspace.brands.find((b) => b.id === brandId)
+  if (brand?.locked) {
+    throw new ApiError(`${brand.name} is locked on your current plan. Upgrade to edit it.`, 403)
+  }
+}
+
+/** Returns the active brand's id for a write; pass `allowLocked` for read-only lookups. */
+export function requireActiveBrandId(database: MockDb, { allowLocked = false } = {}) {
   const id = database.workspace.activeBrandId
   if (!id || !database.workspace.brands.some((b) => b.id === id)) {
     throw new ApiError("Create a brand first.", 409)
   }
+  if (!allowLocked) assertBrandUnlocked(database, id)
   return id
 }

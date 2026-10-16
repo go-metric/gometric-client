@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense, type ReactNode } from "react"
 import { Menu, Plus, X } from "lucide-react"
+import { LockedBrandBanner } from "@/components/dashboard/shell/locked-brand-banner"
 import { NotificationsMenu } from "@/components/dashboard/shell/notifications-menu"
 import { SearchBox } from "@/components/dashboard/shell/search-box"
 import { Sidebar } from "@/components/dashboard/shell/sidebar"
@@ -79,6 +80,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+          <LockedBrandBanner />
           <Suspense fallback={<ListSkeleton rows={6} />}>{children}</Suspense>
         </main>
       </div>

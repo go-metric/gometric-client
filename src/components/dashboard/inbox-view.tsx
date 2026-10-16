@@ -16,6 +16,7 @@ import {
 import { networkList, networks, type NetworkId } from "@/config/networks"
 import type { Conversation, ConversationStatus } from "@/lib/api/types"
 import { formatAgo, formatWhen } from "@/lib/format"
+import { useBilling } from "@/lib/queries/billing"
 import { useConversations, useReply, useSetConversationStatus, useSetUnread } from "@/lib/queries/inbox"
 import { useWorkspace } from "@/lib/queries/workspace"
 import { cn } from "@/lib/utils"
@@ -206,12 +207,14 @@ export function InboxView() {
 
 function Thread({ conversation: c, onBack }: { conversation: Conversation; onBack: () => void }) {
   const { data: workspace } = useWorkspace()
+  const { data: billing } = useBilling()
   const reply = useReply()
   const setStatus = useSetConversationStatus()
   const setUnread = useSetUnread()
   const [text, setText] = useState("")
   const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const showSavedReplies = billing ? billing.subscription.planId !== "free" : false
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" })
@@ -292,21 +295,23 @@ function Thread({ conversation: c, onBack }: { conversation: Conversation; onBac
       </div>
 
       <div className="border-t border-border p-3 sm:p-4">
-        <div className="mb-2 flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
-          {savedReplies.map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => {
-                setText((t) => (t ? `${t} ${r}` : r))
-                inputRef.current?.focus()
-              }}
-              className="shrink-0 cursor-pointer rounded-full border border-border px-3 py-1 text-xs text-foreground/75 hover:border-foreground/40"
-            >
-              {r}
-            </button>
-          ))}
-        </div>
+        {showSavedReplies ? (
+          <div className="mb-2 flex gap-1.5 overflow-x-auto [scrollbar-width:none]">
+            {savedReplies.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => {
+                  setText((t) => (t ? `${t} ${r}` : r))
+                  inputRef.current?.focus()
+                }}
+                className="shrink-0 cursor-pointer rounded-full border border-border px-3 py-1 text-xs text-foreground/75 hover:border-foreground/40"
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <form
           className="flex items-end gap-2"
           onSubmit={(e) => {

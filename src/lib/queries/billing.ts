@@ -3,6 +3,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   billingApi,
+  type CancelSubscriptionInput,
   type ChangePlanInput,
   type UpdatePaymentMethodInput,
 } from "@/lib/api/billing"
@@ -25,6 +26,8 @@ function useBillingMutation<TVars>(mutationFn: (vars: TVars) => Promise<BillingS
     onSuccess: (billing) => {
       queryClient.setQueryData(queryKeys.billing, billing)
       void queryClient.invalidateQueries({ queryKey: queryKeys.notifications })
+      // Plan changes can lock or unlock brands.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.workspace })
     },
   })
 }
@@ -59,6 +62,7 @@ export function useUpdateBillingDetails() {
   })
 }
 
-export const useCancelSubscription = () => useBillingMutation(() => billingApi.cancelSubscription())
+export const useCancelSubscription = () =>
+  useBillingMutation((input: CancelSubscriptionInput) => billingApi.cancelSubscription(input))
 
 export const useResumeSubscription = () => useBillingMutation(() => billingApi.resumeSubscription())

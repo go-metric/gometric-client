@@ -22,7 +22,7 @@ export default function SignupPage() {
         }
         description="Create your account, then connect the networks your brand runs on."
       />
-      <DemoForm next={routes.verifyEmail} className="mt-8 space-y-5">
+      <DemoForm next={routes.verifyEmail} carry={["email"]} className="mt-8 space-y-5">
         <FormField id="name" label="Full name">
           <Input id="name" name="name" autoComplete="name" placeholder="Emily Carter" required />
         </FormField>
