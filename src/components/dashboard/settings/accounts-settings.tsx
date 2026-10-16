@@ -72,7 +72,12 @@ export function AccountsSettings() {
                       variant="ink"
                       disabled={reconnect.isPending}
                       onClick={() =>
-                        reconnect.mutate(account.network, { onSuccess: () => toast.success(`${network.name} reconnected`) })
+                        reconnect.mutate(account.network, {
+                          onSuccess: (result) => {
+                            // Meta reconnect redirects; success toast comes from `?connected=` on return.
+                            if (!result.redirected) toast.success(`${network.name} reconnected`)
+                          },
+                        })
                       }
                     >
                       <RefreshCw data-icon="inline-start" />

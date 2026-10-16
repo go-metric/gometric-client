@@ -33,6 +33,9 @@ function useAccountMutation<TVars>(mutationFn: (vars: TVars) => Promise<unknown>
   })
 }
 
+/** Meta networks reject `POST …/reconnect` — must run OAuth again. */
+const OAUTH_RECONNECT_NETWORKS = new Set<NetworkId>(["facebook", "instagram", "threads"])
+
 /** Starts OAuth and navigates to the provider (or mock callback) URL. */
 export function useStartOAuth() {
   return useMutation({
@@ -44,6 +47,29 @@ export function useStartOAuth() {
   })
 }
 
-export const useReconnectAccount = () => useAccountMutation((network: NetworkId) => accountsApi.reconnect(network))
+/**
+ * Refreshes a connection. X + mock networks use `POST …/reconnect`;
+ * Facebook / Instagram / Threads open OAuth again (`redirected: true`).
+ */
+export function useReconnectAccount() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (network: NetworkId) => {
+      if (OAUTH_RECONNECT_NETWORKS.has(network)) {
+        const redirectUrl = await accountsApi.startOAuth(network)
+        window.location.href = redirectUrl
+        return { redirected: true as const }
+      }
+      await accountsApi.reconnect(network)
+      return { redirected: false as const }
+    },
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.accounts }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.posts.all }),
+      ]),
+  })
+}
 
 export const useDisconnectAccount = () => useAccountMutation((network: NetworkId) => accountsApi.disconnect(network))
