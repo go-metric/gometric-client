@@ -22,7 +22,7 @@ Open [http://localhost:3000](http://localhost:3000).
 Default API (development):
 
 ```bash
-NEXT_PUBLIC_API_BASE_URL=https://gometric-service.sparo.com.co
+NEXT_PUBLIC_API_BASE_URL=https://api.gometric.social
 ```
 
 Seed login (service): `demo@gometric.io` / `password123`

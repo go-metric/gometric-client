@@ -319,6 +319,11 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
               Drop images here or click to upload
             </button>
           )}
+          {selected.includes("instagram") && media.length === 0 ? (
+            <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+              Instagram needs at least one image to publish or schedule.
+            </p>
+          ) : null}
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <FormField id="date" label="Date">
