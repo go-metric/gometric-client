@@ -5,9 +5,10 @@ import { usePathname } from "next/navigation"
 import { useState } from "react"
 import { Menu, X } from "lucide-react"
 import { BrandWordmark } from "@/components/brand-wordmark"
+import { SiteHeaderAuth } from "@/components/marketing/auth-ctas"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Button, ButtonLink } from "@/components/ui/button"
-import { marketingNav, routes } from "@/config/site"
+import { Button } from "@/components/ui/button"
+import { marketingNav } from "@/config/site"
 import { cn } from "@/lib/utils"
 
 export function SiteHeader() {
@@ -35,12 +36,7 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
-          <ButtonLink variant="ghost" href={routes.login}>
-            Log in
-          </ButtonLink>
-          <ButtonLink variant="ink" className="px-5 font-semibold" href={routes.signup}>
-            Sign up free
-          </ButtonLink>
+          <SiteHeaderAuth layout="desktop" />
         </div>
 
         <div className="flex items-center gap-1 md:hidden">
@@ -71,12 +67,7 @@ export function SiteHeader() {
             </Link>
           ))}
           <div className="mt-2 flex flex-col gap-2 border-t border-border pt-3">
-            <ButtonLink variant="outline" href={routes.login}>
-              Log in
-            </ButtonLink>
-            <ButtonLink variant="ink" href={routes.signup}>
-              Sign up free
-            </ButtonLink>
+            <SiteHeaderAuth layout="mobile" onNavigate={() => setOpen(false)} />
           </div>
         </nav>
       </div>

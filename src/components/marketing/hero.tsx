@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowRight } from "lucide-react"
+import { SignupOrAppButton } from "@/components/marketing/auth-ctas"
 import {
   AppWindow,
   AutoPublishPill,
@@ -7,7 +8,6 @@ import {
   PlannerMock,
 } from "@/components/marketing/mocks"
 import { Accent, Container, Highlight } from "@/components/marketing/primitives"
-import { ButtonLink } from "@/components/ui/button"
 import { networkList } from "@/config/networks"
 
 export function Hero() {
@@ -28,10 +28,10 @@ export function Hero() {
           </p>
 
           <div className="mt-9 flex flex-col items-center gap-4 sm:flex-row">
-            <ButtonLink variant="ink" size="xl" href="/signup">
+            <SignupOrAppButton variant="ink" size="xl">
               Create your free account
               <ArrowRight data-icon="inline-end" className="text-brand" />
-            </ButtonLink>
+            </SignupOrAppButton>
             <a
               href="#product"
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground/80 underline-offset-4 hover:text-foreground hover:underline"

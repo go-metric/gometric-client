@@ -3,9 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { ListSkeleton } from "@/components/dashboard/ui"
-import { routes } from "@/config/site"
-import { authApi } from "@/lib/api/auth"
-import { getAccessToken, setAccessToken, setActiveBrandId } from "@/lib/api/http"
+import { appHomeFor, loadAuthSession } from "@/lib/auth-session"
+import { setAccessToken, setActiveBrandId } from "@/lib/api/http"
 
 /** Sends already-signed-in users away from login/signup to the app. */
 export function RedirectIfAuthed({ children }: { children: ReactNode }) {
@@ -16,22 +15,17 @@ export function RedirectIfAuthed({ children }: { children: ReactNode }) {
     let cancelled = false
 
     ;(async () => {
-      if (!getAccessToken()) {
-        if (!cancelled) setReady(true)
+      const me = await loadAuthSession()
+      if (cancelled) return
+
+      if (me) {
+        router.replace(appHomeFor(me))
         return
       }
 
-      try {
-        const me = await authApi.me({ skipAuthRedirect: true })
-        if (cancelled) return
-        setActiveBrandId(me.workspace.activeBrandId || null)
-        router.replace(me.workspace.brandCount > 0 ? routes.dashboard.overview : routes.onboarding.brand)
-      } catch {
-        if (cancelled) return
-        setAccessToken(null)
-        setActiveBrandId(null)
-        setReady(true)
-      }
+      setAccessToken(null)
+      setActiveBrandId(null)
+      setReady(true)
     })()
 
     return () => {

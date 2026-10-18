@@ -1,8 +1,8 @@
 import { ArrowRight } from "lucide-react"
+import { SignupOrAppButton } from "@/components/marketing/auth-ctas"
 import { FollowersCard, InboxCard } from "@/components/marketing/mocks"
 import { Accent, Container, Highlight } from "@/components/marketing/primitives"
 import { Reveal } from "@/components/marketing/reveal"
-import { ButtonLink } from "@/components/ui/button"
 
 export function FinalCta() {
   return (
@@ -26,14 +26,13 @@ export function FinalCta() {
               inbox, and analytics from one calm workspace.
             </p>
             <div className="mt-10 flex justify-center">
-              <ButtonLink
+              <SignupOrAppButton
                 size="xl"
                 className="bg-white text-[#1f1512] hover:bg-white/90"
-                href="/signup"
               >
                 Create your free account
                 <ArrowRight data-icon="inline-end" className="text-brand" />
-              </ButtonLink>
+              </SignupOrAppButton>
             </div>
           </div>
         </Reveal>

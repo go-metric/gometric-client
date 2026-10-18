@@ -1,4 +1,5 @@
 import { api, setAccessToken } from "@/lib/api/http"
+import { invalidateAuthSession } from "@/lib/session-cache"
 
 export type AuthMe = {
   userId: string
@@ -38,6 +39,7 @@ export const authApi = {
       skipAuthRedirect: true,
     })
     setAccessToken(result.accessToken, { remember })
+    invalidateAuthSession()
     return result
   },
 
@@ -46,6 +48,7 @@ export const authApi = {
       await api<void>("/auth/logout", { method: "POST", skipAuthRedirect: true })
     } finally {
       setAccessToken(null)
+      invalidateAuthSession()
     }
   },
 

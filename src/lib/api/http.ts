@@ -1,5 +1,6 @@
 import { apiBaseUrl as configuredApiBaseUrl } from "@/config/api"
 import { ApiError } from "@/lib/api/errors"
+import { invalidateAuthSession } from "@/lib/session-cache"
 import { routes } from "@/config/site"
 
 const TOKEN_KEY = "gometric:accessToken"
@@ -76,6 +77,7 @@ export function handleUnauthorized(message = "Your session expired. Please log i
   handlingUnauthorized = true
   setAccessToken(null)
   setActiveBrandId(null)
+  invalidateAuthSession()
 
   void import("sonner").then(({ toast }) => toast.error(message))
 
@@ -134,6 +136,7 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
     } else if (res.status === 401) {
       setAccessToken(null)
       setActiveBrandId(null)
+      invalidateAuthSession()
     }
     throw new ApiError(data.message ?? "Request failed.", res.status)
   }
