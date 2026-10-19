@@ -3,6 +3,7 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { NetworkId } from "@/config/networks"
 import { accountsApi } from "@/lib/api/accounts"
+import { ApiError } from "@/lib/api/errors"
 import { queryKeys } from "@/lib/queries/keys"
 
 export const accountsOptions = () =>
@@ -33,11 +34,21 @@ function useAccountMutation<TVars>(mutationFn: (vars: TVars) => Promise<unknown>
   })
 }
 
-export const useConnectAccount = () =>
-  useAccountMutation(({ network, handle }: { network: NetworkId; handle: string }) =>
-    accountsApi.connect(network, handle)
-  )
+/** Starts the provider OAuth flow: navigates the browser away to the consent screen. */
+export async function startOAuth(network: NetworkId) {
+  const redirectUrl = await accountsApi.oauthStart(network)
+  window.location.assign(redirectUrl)
+}
 
-export const useReconnectAccount = () => useAccountMutation((network: NetworkId) => accountsApi.reconnect(network))
+/** Refreshes the token in place where the network supports it, otherwise re-runs OAuth consent. */
+export const useReconnectAccount = () =>
+  useAccountMutation(async (network: NetworkId) => {
+    try {
+      return await accountsApi.reconnect(network)
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) return startOAuth(network)
+      throw error
+    }
+  })
 
 export const useDisconnectAccount = () => useAccountMutation((network: NetworkId) => accountsApi.disconnect(network))

@@ -137,6 +137,7 @@ export function PostStatusBadge({ status }: { status: PostStatus }) {
 const accountStatusStyles: Record<AccountStatus, { label: string; className: string }> = {
   connected: { label: "Connected", className: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300" },
   expiring: { label: "Reconnect soon", className: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
+  expired: { label: "Reconnect required", className: "bg-red-500/12 text-red-700 dark:text-red-300" },
   disconnected: { label: "Not connected", className: "bg-foreground/8 text-foreground/60" },
 }
 

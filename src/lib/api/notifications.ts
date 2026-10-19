@@ -1,20 +1,8 @@
-import { read, write } from "@/lib/api/mock/db"
+import { http } from "@/lib/api/http"
+import type { AppNotification } from "@/lib/api/types"
 
 export const notificationsApi = {
-  list() {
-    return read((db) => [...db.notifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
-  },
-
-  markRead(id: string) {
-    return write((db) => {
-      const n = db.notifications.find((item) => item.id === id)
-      if (n) n.read = true
-    })
-  },
-
-  markAllRead() {
-    return write((db) => {
-      for (const n of db.notifications) n.read = true
-    })
-  },
+  list: () => http.get<AppNotification[]>("/notifications", { noBrand: true }),
+  markRead: (id: string) => http.post<void>(`/notifications/${id}/read`, undefined, { noBrand: true }),
+  markAllRead: () => http.post<void>("/notifications/read-all", undefined, { noBrand: true }),
 }

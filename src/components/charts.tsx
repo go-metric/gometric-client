@@ -184,7 +184,8 @@ export function Heatmap({
 }: {
   days: string[]
   slots: string[]
-  values: number[][]
+  /** Cells with no posts are `null` and render empty. */
+  values: (number | null)[][]
   best?: { day: string; slot: string }
   color?: string
   className?: string
@@ -206,14 +207,14 @@ export function Heatmap({
         <div key={day} className="contents">
           <span className="flex items-center pr-1 text-[11px] text-muted-foreground">{day}</span>
           {slots.map((slot, s) => {
-            const v = values[d]?.[s] ?? 0
+            const v = values[d]?.[s] ?? null
             const isBest = best?.day === day && best.slot === slot
             return (
               <span
                 key={slot}
-                title={`${day} ${slot}: ${v}/100`}
+                title={v === null ? `${day} ${slot}: no posts` : `${day} ${slot}: ${v}/100`}
                 className={cn("h-7 rounded-md", isBest && "ring-2 ring-foreground/70 ring-offset-1 ring-offset-card")}
-                style={{ background: `color-mix(in oklab, ${color} ${Math.round(8 + v * 0.92)}%, var(--muted))` }}
+                style={{ background: v === null ? "var(--muted)" : `color-mix(in oklab, ${color} ${Math.round(8 + v * 0.92)}%, var(--muted))` }}
               />
             )
           })}

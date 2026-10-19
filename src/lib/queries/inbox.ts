@@ -1,66 +1,81 @@
 "use client"
 
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { infiniteQueryOptions, queryOptions, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { inboxApi } from "@/lib/api/inbox"
-import type { Conversation } from "@/lib/api/types"
+import type { Conversation, ConversationFilters, ConversationStatus } from "@/lib/api/types"
 import { queryKeys } from "@/lib/queries/keys"
 
-export const conversationsOptions = () =>
-  queryOptions({
-    queryKey: queryKeys.conversations,
-    queryFn: () => inboxApi.list(),
-    refetchInterval: 60_000,
+/** New activity should show up without a manual refresh; webhooks/polling keep the server fresh. */
+const POLL_MS = 30_000
+
+export const conversationListOptions = (filters: ConversationFilters) =>
+  infiniteQueryOptions({
+    queryKey: queryKeys.inbox.list(filters),
+    queryFn: ({ pageParam }) => inboxApi.list({ ...filters, cursor: pageParam }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    refetchInterval: POLL_MS,
   })
 
-export const useConversations = () => useQuery(conversationsOptions())
+export const useConversationList = (filters: ConversationFilters) => useInfiniteQuery(conversationListOptions(filters))
+
+export const conversationDetailOptions = (id: string) =>
+  queryOptions({
+    queryKey: queryKeys.inbox.detail(id),
+    queryFn: () => inboxApi.get(id),
+    refetchInterval: POLL_MS,
+  })
+
+export const useConversation = (id: string | null) =>
+  useQuery({ ...conversationDetailOptions(id ?? ""), enabled: !!id })
+
+/** A single small page, for dashboard widgets and global search. */
+export const useConversationPreview = (filters: ConversationFilters, enabled = true) =>
+  useQuery({
+    queryKey: queryKeys.inbox.preview(filters),
+    queryFn: () => inboxApi.list(filters),
+    refetchInterval: POLL_MS,
+    enabled,
+  })
 
 export const useUnreadCount = () =>
   useQuery({
-    ...conversationsOptions(),
-    select: (items) => items.filter((c) => c.unread && c.status === "open").length,
+    queryKey: queryKeys.inbox.preview({ limit: 1 }),
+    queryFn: () => inboxApi.list({ limit: 1 }),
+    refetchInterval: POLL_MS,
+    select: (page) => page.unreadTotal,
   })
 
-/** Patches one conversation in the cache immediately, rolling back on failure. */
-function useOptimisticConversation<TVars extends { id: string }>(
-  mutationFn: (vars: TVars) => Promise<Conversation>,
-  apply: (conversation: Conversation, vars: TVars) => Conversation
-) {
+export const useInboxMembers = () => useQuery({ queryKey: queryKeys.inbox.members, queryFn: () => inboxApi.members(), staleTime: 5 * 60_000 })
+
+function useConversationMutation<TVars extends { id: string }>(mutationFn: (vars: TVars) => Promise<Conversation>) {
   const queryClient = useQueryClient()
-  const key = queryKeys.conversations
   return useMutation({
     mutationFn,
-    onMutate: async (vars) => {
-      await queryClient.cancelQueries({ queryKey: key })
-      const previous = queryClient.getQueryData<Conversation[]>(key)
-      queryClient.setQueryData<Conversation[]>(key, (items) =>
-        items?.map((c) => (c.id === vars.id ? apply(c, vars) : c))
-      )
-      return { previous }
+    onSuccess: (conversation) => {
+      queryClient.setQueryData(queryKeys.inbox.detail(conversation.id), conversation)
+      return queryClient.invalidateQueries({ queryKey: queryKeys.inbox.all })
     },
-    onError: (_error, _vars, context) => queryClient.setQueryData(key, context?.previous),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: key }),
   })
 }
 
-export const useSetUnread = () =>
-  useOptimisticConversation(
-    ({ id, unread }: { id: string; unread: boolean }) => inboxApi.setUnread(id, unread),
-    (c, { unread }) => ({ ...c, unread })
-  )
+export const useSetUnread = () => useConversationMutation(({ id, unread }: { id: string; unread: boolean }) => inboxApi.setUnread(id, unread))
 
 export const useSetConversationStatus = () =>
-  useOptimisticConversation(
-    ({ id, status }: { id: string; status: Conversation["status"] }) => inboxApi.setStatus(id, status),
-    (c, { status }) => ({ ...c, status, unread: false })
-  )
+  useConversationMutation(({ id, status }: { id: string; status: ConversationStatus }) => inboxApi.setStatus(id, status))
 
-export function useReply() {
+export const useSetAssignee = () =>
+  useConversationMutation(({ id, userId }: { id: string; userId: string | null }) => inboxApi.setAssignee(id, userId))
+
+export const useAddNote = () => useConversationMutation(({ id, text }: { id: string; text: string }) => inboxApi.addNote(id, text))
+
+/** Only resolves once the platform has confirmed the reply. */
+export const useReply = () => useConversationMutation(({ id, text }: { id: string; text: string }) => inboxApi.reply(id, text))
+
+export function useSyncInbox() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, text }: { id: string; text: string }) => inboxApi.reply(id, text),
-    onSuccess: (conversation) =>
-      queryClient.setQueryData<Conversation[]>(queryKeys.conversations, (items) =>
-        items?.map((c) => (c.id === conversation.id ? conversation : c))
-      ),
+    mutationFn: () => inboxApi.sync(),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.inbox.all }),
   })
 }

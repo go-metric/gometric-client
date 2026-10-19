@@ -1,278 +1,125 @@
 "use client"
 
-import type { CSSProperties } from "react"
-import { AlertTriangle, CircleDollarSign, Plug } from "lucide-react"
-import { BreakdownPanel, HeatmapPanel, InsightsPanel, StatTiles, TopPostsPanel } from "@/components/dashboard/analytics/widgets"
+import { format, parseISO } from "date-fns"
+import { BarChart3, Info, Link2 } from "lucide-react"
+import { BestTimePanel, DemographicsPanels, PublishingPanel, SourceNotes, TopPostsPanel, TrendPanel } from "@/components/dashboard/analytics/report-widgets"
 import { KpiCards } from "@/components/dashboard/kpi-cards"
-import { Panel } from "@/components/dashboard/ui"
-import { NetworkTile } from "@/components/network"
-import { TimeSeriesChart } from "@/components/time-series"
+import { EmptyState, Panel } from "@/components/dashboard/ui"
+import { ProgressBar } from "@/components/charts"
 import { ButtonLink } from "@/components/ui/button"
 import { networkThemes } from "@/config/network-themes"
-import { networks } from "@/config/networks"
+import { networks, type NetworkId } from "@/config/networks"
 import { routes } from "@/config/site"
-import { DEMOGRAPHIC_IDS } from "@/lib/api/analytics-profiles"
-import type { AnalyticsRange, Monetization, NetworkAnalytics } from "@/lib/api/types"
-import { formatCompact, formatCurrency, formatCurrencyAxis } from "@/lib/format"
-import { cn } from "@/lib/utils"
+import type { AnalyticsReport, Metric } from "@/lib/api/types"
+import { formatCompact } from "@/lib/format"
 
-const placeholder = "animate-pulse rounded-2xl bg-muted"
-
-/** Desktop column count by item count (full class names so Tailwind can see them). */
-const rowCols: Record<number, string> = { 1: "xl:grid-cols-1", 2: "xl:grid-cols-2", 3: "xl:grid-cols-3" }
-
-function NetworkHero({
-  network,
-  data,
-  rangeLabel,
-}: {
-  network: NetworkAnalytics["network"]
-  data: NetworkAnalytics | undefined
-  rangeLabel: string
-}) {
-  const { name, accountLabel } = networks[network]
-  const theme = networkThemes[network]
-  const ink = "color-mix(in srgb, var(--net) 78%, var(--foreground))"
-  const live = data && data.status !== "disconnected" ? data : undefined
-
-  return (
-    <section
-      className="flex flex-col gap-4 rounded-3xl border p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
-      style={{
-        background: "color-mix(in srgb, var(--net) 8%, var(--card))",
-        borderColor: "color-mix(in srgb, var(--net) 22%, var(--border))",
-      }}
-    >
-      <div className="flex min-w-0 items-center gap-4">
-        <NetworkTile network={network} size="lg" />
-        <div className="min-w-0">
-          <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{name}</h2>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-            <span className="truncate">{live?.handle ?? accountLabel}</span>
-            {live ? (
-              <span
-                className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                style={{ background: "color-mix(in srgb, var(--net) 16%, transparent)", color: ink }}
-              >
-                {live.status === "expiring" ? "Reconnect soon" : "Connected"}
-              </span>
-            ) : null}
-          </p>
-        </div>
-      </div>
-      {live ? (
-        <div className="sm:text-right">
-          <p className="text-3xl font-semibold tracking-tight" style={{ color: ink }}>
-            {formatCompact(live.followers)}
-          </p>
-          <p className="text-xs text-muted-foreground">followers · {rangeLabel}</p>
-        </div>
-      ) : (
-        <p className="max-w-xs text-sm text-muted-foreground sm:text-right">{theme.tagline}</p>
-      )}
-    </section>
-  )
+const interactionLabels: Record<string, string> = {
+  likes: "Likes",
+  comments: "Comments",
+  shares: "Shares",
+  saves: "Saves",
+  replies: "Replies",
+  reposts: "Reposts",
+  quotes: "Quotes",
 }
 
-function NotConnected({ data }: { data: NetworkAnalytics }) {
-  const { name } = networks[data.network]
-  return (
-    <Panel>
-      <div className="mx-auto flex max-w-lg flex-col items-center gap-3 py-6 text-center">
-        <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-muted text-[var(--net)]">
-          <Plug className="size-5" />
-        </span>
-        <h3 className="text-lg font-semibold">Connect {name} to see its analytics</h3>
-        <p className="text-sm text-muted-foreground">
-          You&apos;ll get these {name} metrics here, and they&apos;ll count towards your combined totals.
-        </p>
-        <ul className="my-1 flex flex-wrap justify-center gap-1.5">
-          {data.trackedMetrics.map((metric) => (
-            <li key={metric} className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-              {metric}
-            </li>
-          ))}
-        </ul>
-        <ButtonLink href={routes.dashboard.accounts} style={{ background: "var(--net)" }} className="text-white hover:opacity-90">
-          Connect {name}
-        </ButtonLink>
-      </div>
-    </Panel>
-  )
-}
+export function NetworkDashboard({ network, data, rangeLabel }: { network: NetworkId; data: AnalyticsReport | undefined; rangeLabel: string }) {
+  const name = networks[network].name
+  const accent = networkThemes[network].accent
 
-/** Earnings a network reports (YouTube): the figures when monetized, otherwise what's missing. */
-function EarningsSection({
-  network,
-  monetization,
-  perDay,
-  accent,
-}: {
-  network: NetworkAnalytics["network"]
-  monetization: Monetization
-  perDay: boolean
-  accent: string
-}) {
-  const { name } = networks[network]
-  return (
-    <section aria-labelledby="earnings-heading" className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
-        <h2 id="earnings-heading" className="text-xl font-semibold tracking-tight">
-          Earnings
-        </h2>
-        {monetization.status === "monetized" ? (
-          <p className="text-xs text-muted-foreground">
-            Estimates from {name}, in USD. Recent days can lag and may change as revenue is finalized.
-          </p>
-        ) : null}
-      </div>
+  if (data && data.accounts.length === 0) {
+    const unsupported = data.unsupported.find((u) => u.network === network)
+    return (
+      <Panel>
+        <EmptyState
+          icon={unsupported ? <Info /> : <Link2 />}
+          title={unsupported ? `${name} analytics aren't available` : `${name} isn't connected`}
+          description={unsupported?.reason ?? `Connect ${name} to see its performance here.`}
+          action={unsupported ? undefined : <ButtonLink href={routes.dashboard.accounts}>Connect {name}</ButtonLink>}
+        />
+      </Panel>
+    )
+  }
 
-      {monetization.status === "monetized" ? (
-        <>
-          <KpiCards kpis={monetization.kpis} accent={accent} />
-          <div className="grid gap-4 xl:grid-cols-3">
-            <Panel
-              title={`${monetization.timelineTitle} ${perDay ? "per day" : "per week"}`}
-              action={
-                <span className="text-xs text-muted-foreground">{formatCurrency(monetization.kpis[0]?.value ?? 0)} total</span>
-              }
-              className="xl:col-span-2"
-            >
-              <TimeSeriesChart
-                points={monetization.timeline.map((d) => ({ label: d.label, detail: d.detail, values: { v: d.value } }))}
-                series={[{ id: "v", label: monetization.timelineTitle, color: accent }]}
-                formatValue={formatCurrency}
-                formatAxis={formatCurrencyAxis}
-                className="h-60 sm:h-72"
-              />
-            </Panel>
-            {monetization.breakdowns[0] ? <BreakdownPanel breakdown={monetization.breakdowns[0]} accent={accent} /> : null}
-          </div>
-        </>
-      ) : (
-        <Panel>
-          <div className="mx-auto flex max-w-xl flex-col items-center gap-3 py-4 text-center">
-            <span className="inline-flex size-11 items-center justify-center rounded-2xl bg-muted text-[var(--net)]">
-              <CircleDollarSign className="size-5" />
-            </span>
-            <h3 className="text-lg font-semibold">Earnings aren&apos;t available for this channel yet</h3>
-            <p className="text-sm text-muted-foreground">{monetization.reason}</p>
-          </div>
-        </Panel>
-      )}
-    </section>
-  )
-}
+  const account = data?.accounts[0]
+  const kpis: Metric[] | undefined = account
+    ? [
+        {
+          id: "followers",
+          label: "Followers",
+          format: "number",
+          value: account.followers.value,
+          previous: null,
+          change: account.followers.growthRate,
+          note: account.followers.note,
+        },
+        ...account.metrics.filter((m) => m.id !== "accounts_engaged" || m.value !== null),
+        {
+          id: "engagement",
+          label: "Engagement rate",
+          format: "percent",
+          value: account.engagement.rate,
+          previous: account.engagement.previousRate,
+          change: account.engagement.change,
+          note: account.engagement.rate === null ? account.engagement.note : `Interactions ÷ ${account.engagement.basis} on ${account.engagement.posts} posts`,
+        },
+        {
+          id: "posts",
+          label: "Posts published",
+          format: "number",
+          value: account.publishedPosts,
+          previous: account.publishedPostsPrevious,
+          change: null,
+        },
+      ]
+    : undefined
 
-export function NetworkDashboard({
-  network,
-  data,
-  range,
-  rangeLabel,
-}: {
-  network: NetworkAnalytics["network"]
-  data: NetworkAnalytics | undefined
-  range: AnalyticsRange
-  rangeLabel: string
-}) {
-  const theme = networkThemes[network]
-  const { name } = networks[network]
-  const themeVars = { "--net": theme.accent } as CSSProperties
-  const perDay = range <= 31
-  const total = data?.timeline.reduce((sum, d) => sum + d.value, 0) ?? 0
-  const contentBreakdowns = data?.breakdowns.filter((b) => !DEMOGRAPHIC_IDS.has(b.id)) ?? []
-  const demographicBreakdowns = data?.breakdowns.filter((b) => DEMOGRAPHIC_IDS.has(b.id)) ?? []
-  const leadBreakdown = contentBreakdowns[0]
-  const otherContent = contentBreakdowns.slice(1)
+  const interactions = account ? Object.entries(interactionLabels).filter(([id]) => account.interactions[id] != null) : []
+  const maxInteraction = Math.max(...interactions.map(([id]) => account?.interactions[id] ?? 0), 1)
 
   return (
-    <div style={themeVars} className="space-y-4">
-      <NetworkHero network={network} data={data} rangeLabel={rangeLabel} />
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        {name} {account?.handle} · {rangeLabel}
+        {account?.trackingSince ? ` · tracking since ${format(parseISO(account.trackingSince), "MMM d, yyyy")}` : ""}
+      </p>
+      <KpiCards kpis={kpis} skeletons={6} className="sm:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4" />
 
-      {data?.status === "disconnected" ? (
-        <NotConnected data={data} />
-      ) : (
-        <>
-          {data?.status === "expiring" ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-500/10 px-4 py-3 text-sm">
-              <p className="flex items-center gap-2 font-medium text-amber-800 dark:text-amber-200">
-                <AlertTriangle className="size-4 shrink-0" />
-                Your {name} connection expires soon.
-              </p>
-              <ButtonLink href={routes.dashboard.accounts} variant="outline" size="sm">
-                Reconnect
-              </ButtonLink>
-            </div>
-          ) : null}
+      <TrendPanel accounts={data?.accounts} loading={!data} title={`${name} trends`} />
 
-          <KpiCards kpis={data?.kpis} accent={theme.accent} />
-
-          <div className="grid gap-4 xl:grid-cols-3">
-            <Panel
-              title={`${data?.timelineTitle ?? "Performance"} ${perDay ? "per day" : "per week"}`}
-              action={data ? <span className="text-xs text-muted-foreground">{formatCompact(total)} total</span> : null}
-              className="xl:col-span-2"
-            >
-              {data ? (
-                <TimeSeriesChart
-                  points={data.timeline.map((d) => ({ label: d.label, detail: d.detail, values: { v: d.value } }))}
-                  series={[{ id: "v", label: data.timelineTitle, color: theme.accent }]}
-                  className="h-60 sm:h-72"
-                />
-              ) : (
-                <div className={`${placeholder} h-60 sm:h-72`} />
-              )}
-            </Panel>
-
-            {leadBreakdown ? (
-              <BreakdownPanel breakdown={leadBreakdown} accent={theme.accent} />
-            ) : (
-              <Panel>
-                <div className={`${placeholder} h-60 sm:h-72`} />
-              </Panel>
-            )}
-          </div>
-
-          {data ? <StatTiles stats={data.highlights} accent={theme.accent} /> : <div className={`${placeholder} h-20`} />}
-
-          {data?.monetization ? (
-            <EarningsSection network={network} monetization={data.monetization} perDay={perDay} accent={theme.accent} />
-          ) : null}
-
-          {/* Networks have one to three extra breakdowns; size the row to what's there so it never leaves an empty column. */}
-          <div className={cn("grid gap-4 md:grid-cols-2 md:max-xl:[&>:last-child:nth-child(odd)]:col-span-2", rowCols[data ? Math.min(otherContent.length + 1, 3) : 3])}>
-            {data ? (
-              otherContent.map((b) => <BreakdownPanel key={b.id} breakdown={b} accent={theme.accent} />)
-            ) : (
-              <>
-                <Panel><div className={`${placeholder} h-40`} /></Panel>
-                <Panel><div className={`${placeholder} h-40`} /></Panel>
-              </>
-            )}
-            <HeatmapPanel heatmap={data?.heatmap} accent={theme.accent} />
-          </div>
-
-          {data && demographicBreakdowns.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {demographicBreakdowns.map((b) => (
-                <BreakdownPanel key={b.id} breakdown={b} accent={theme.accent} />
+      <div className="grid gap-4 xl:grid-cols-3">
+        <Panel title="Interactions on posts in this period" className="xl:col-span-1">
+          {!account ? (
+            <div className="h-40 animate-pulse rounded-2xl bg-muted" />
+          ) : interactions.length === 0 ? (
+            <EmptyState icon={<BarChart3 />} title="No interaction data" description={account.engagement.note ?? "The platform hasn't reported likes or comments for posts in this period."} />
+          ) : (
+            <ul className="space-y-3.5">
+              {interactions.map(([id, label]) => (
+                <li key={id}>
+                  <div className="mb-1.5 flex justify-between gap-3 text-sm">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="font-semibold">{formatCompact(account.interactions[id] ?? 0)}</span>
+                  </div>
+                  <ProgressBar value={((account.interactions[id] ?? 0) / maxInteraction) * 100} color={accent} />
+                </li>
               ))}
-            </div>
-          ) : !data ? (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <Panel><div className={`${placeholder} h-40`} /></Panel>
-              <Panel><div className={`${placeholder} h-40`} /></Panel>
-              <Panel><div className={`${placeholder} h-40`} /></Panel>
-              <Panel><div className={`${placeholder} h-40`} /></Panel>
-            </div>
-          ) : null}
+            </ul>
+          )}
+        </Panel>
+        <div className="xl:col-span-1">
+          <PublishingPanel report={data} />
+        </div>
+        <div className="xl:col-span-1">
+          <BestTimePanel report={data} />
+        </div>
+      </div>
 
-          <div className="grid gap-4 xl:grid-cols-3">
-            <InsightsPanel insights={data?.insights} title="Insights" accent={theme.accent} />
-            <TopPostsPanel posts={data?.topPosts} title={`Top ${name} posts`} className="xl:col-span-2" />
-          </div>
-        </>
-      )}
+      <DemographicsPanels report={data} />
+
+      <TopPostsPanel posts={data?.topPosts} title={`Best-performing ${name} posts`} />
+
+      <SourceNotes report={data} />
     </div>
   )
 }

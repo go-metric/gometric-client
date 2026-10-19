@@ -5,13 +5,13 @@ import { NetworkDashboard } from "@/components/dashboard/analytics/network-dashb
 import { OverviewDashboard } from "@/components/dashboard/analytics/overview-dashboard"
 import { ErrorState, Panel } from "@/components/dashboard/ui"
 import type { NetworkId } from "@/config/networks"
-import { useAnalytics, useNetworkAnalytics } from "@/lib/queries/analytics"
+import { useAnalyticsReport } from "@/lib/queries/analytics"
 import { cn } from "@/lib/utils"
 
 /** `/dashboard/analytics`: every connected network combined. */
 export function OverviewView() {
-  const { params, range } = useAnalyticsPeriod()
-  const { data, error, isPlaceholderData, refetch } = useAnalytics(params)
+  const { params } = useAnalyticsPeriod()
+  const { data, error, isPlaceholderData, refetch } = useAnalyticsReport(params)
 
   if (error) {
     return (
@@ -23,15 +23,15 @@ export function OverviewView() {
 
   return (
     <div className={cn("transition-opacity", isPlaceholderData && "opacity-60")}>
-      <OverviewDashboard data={data} range={range} />
+      <OverviewDashboard data={data} />
     </div>
   )
 }
 
 /** `/dashboard/analytics/[network]`: one network's own dashboard. */
 export function NetworkView({ network }: { network: NetworkId }) {
-  const { params, range, label } = useAnalyticsPeriod()
-  const { data, error, isPlaceholderData, refetch } = useNetworkAnalytics({ ...params, network })
+  const { params, label } = useAnalyticsPeriod()
+  const { data, error, isPlaceholderData, refetch } = useAnalyticsReport({ ...params, network })
 
   if (error) {
     return (
@@ -43,7 +43,7 @@ export function NetworkView({ network }: { network: NetworkId }) {
 
   return (
     <div className={cn("transition-opacity", isPlaceholderData && "opacity-60")}>
-      <NetworkDashboard key={network} network={network} data={data} range={range} rangeLabel={label} />
+      <NetworkDashboard key={network} network={network} data={data} rangeLabel={label} />
     </div>
   )
 }

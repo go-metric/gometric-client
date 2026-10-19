@@ -1,19 +1,9 @@
 "use client"
 
-import { useState, type FormEvent } from "react"
+import type { FormEvent } from "react"
 import { toast } from "sonner"
 import { EmptyState, ErrorState, ListSkeleton, Panel } from "@/components/dashboard/ui"
 import { FormField, selectClassName } from "@/components/form-field"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { SearchableSelect } from "@/components/ui/searchable-select"
 import { Button, ButtonLink } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,7 +12,6 @@ import { routes } from "@/config/site"
 import { activeBrand } from "@/lib/api/workspace"
 import type { Brand, Workspace } from "@/lib/api/types"
 import {
-  useResetDemo,
   useUpdateBrand,
   useUpdateProfile,
   useWorkspace,
@@ -39,7 +28,6 @@ export function GeneralSettings() {
     <div className="space-y-4">
       {brand ? <BrandForm brand={brand} /> : <NoActiveBrand />}
       <ProfileForm workspace={data} />
-      <DangerZone />
     </div>
   )
 }
@@ -154,59 +142,3 @@ function ProfileForm({ workspace }: { workspace: Workspace }) {
     </Panel>
   )
 }
-
-function DangerZone() {
-  const reset = useResetDemo()
-  const [open, setOpen] = useState(false)
-
-  return (
-    <Panel title="Danger zone">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-foreground">Reset demo data</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Clears the in-browser mock database and reseeds Northwind. Real accounts are unaffected once
-            the service is wired up.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/8"
-          onClick={() => setOpen(true)}
-        >
-          Reset demo data
-        </Button>
-      </div>
-
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reset all demo data?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Posts, inbox threads, connected accounts, and billing state go back to the seed workspace.
-              This can&apos;t be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={reset.isPending}
-              onClick={() =>
-                reset.mutate(undefined, {
-                  onSuccess: () => {
-                    toast.success("Demo data reset")
-                    setOpen(false)
-                  },
-                })
-              }
-            >
-              {reset.isPending ? "Resetting…" : "Reset"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </Panel>
-  )
-}
-

@@ -48,7 +48,23 @@ export type Workspace = {
 
 /* Accounts ----------------------------------------------------------------- */
 
-export type AccountStatus = "connected" | "expiring" | "disconnected"
+export type AccountStatus = "connected" | "expiring" | "expired" | "disconnected"
+
+export type CapabilityFeature =
+  | "publish"
+  | "delete_post"
+  | "comments_read"
+  | "comments_reply"
+  | "dm_read"
+  | "dm_reply"
+  | "insights_account"
+  | "insights_posts"
+
+export type CapabilityState =
+  | { state: "available"; note?: string }
+  | { state: "needs_reauthorization"; missingScopes: string[]; note?: string }
+  | { state: "not_connected"; note?: string }
+  | { state: "unsupported"; reason: string }
 
 export type SocialAccount = {
   brandId: string
@@ -57,6 +73,8 @@ export type SocialAccount = {
   handle: string | null
   followers: number | null
   connectedAt: string | null
+  /** What this connection can do right now, as resolved by the service. */
+  capabilities?: Record<CapabilityFeature, CapabilityState>
 }
 
 /* Posts -------------------------------------------------------------------- */
@@ -99,34 +117,93 @@ export type PostListParams = {
 
 export type ConversationKind = "comment" | "dm"
 
-export type ConversationStatus = "open" | "done"
+export type ConversationStatus = "open" | "pending" | "done"
 
 export type Contact = {
   name: string
   initials: string
   color: string
+  avatarUrl: string | null
 }
 
 export type ChatMessage = {
   id: string
   from: "contact" | "brand"
+  /** Sender name when it differs from the conversation contact (comment threads). */
+  authorName: string | null
   text: string
   sentAt: string
 }
 
-export type Conversation = {
+export type ConversationSummary = {
   id: string
   brandId: string
+  accountId: string | null
   network: NetworkId
   kind: ConversationKind
   contact: Contact
   /** Post the comment belongs to, for comment threads. */
   postTitle: string | null
+  postUrl: string | null
   status: ConversationStatus
   unread: boolean
+  assigneeId: string | null
   updatedAt: string
-  messages: ChatMessage[]
+  messageCount: number
+  lastMessage: { from: "contact" | "brand"; text: string; sentAt: string } | null
 }
+
+export type InboxNote = { id: string; authorId: string; text: string; createdAt: string }
+
+export type Conversation = ConversationSummary & {
+  messages: ChatMessage[]
+  notes: InboxNote[]
+  /** Whether a reply can be sent right now, and why not. */
+  reply: { allowed: true } | { allowed: false; reason: string }
+}
+
+/** Per connected account: what the inbox can read, and the last sync result. */
+export type InboxAccountState = {
+  accountId: string
+  network: NetworkId
+  handle: string | null
+  status: AccountStatus
+  syncedAt: string | null
+  syncError: string | null
+  comments: CapabilityState
+  dms: CapabilityState
+}
+
+export type ConversationPage = {
+  items: ConversationSummary[]
+  nextCursor: string | null
+  /** Open or pending conversations with unread messages, ignoring filters. */
+  unreadTotal: number
+  accounts: InboxAccountState[]
+}
+
+export type ConversationFilters = {
+  network?: NetworkId
+  accountId?: string
+  kind?: ConversationKind
+  status?: ConversationStatus
+  unread?: boolean
+  assigneeId?: string
+  q?: string
+  limit?: number
+  cursor?: string
+}
+
+export type SyncOutcome = {
+  accountId: string
+  network: NetworkId
+  status: "synced" | "skipped" | "failed"
+  imported: number
+  newMessages: number
+  message?: string
+}
+
+export type WorkspaceMemberSummary = { id: string; name: string; email: string }
 
 /* Notifications ------------------------------------------------------------ */
 
@@ -146,165 +223,98 @@ export type AnalyticsRange = number
 
 export type AnalyticsParams = {
   range: AnalyticsRange
-  /** Last day of the window as yyyy-MM-dd. Defaults to today. */
+  /** Last day of the window as yyyy-MM-dd (UTC). Defaults to today. */
   end?: string
+  network?: NetworkId
+  accountId?: string
 }
 
-export type NetworkAnalyticsParams = AnalyticsParams & {
-  network: NetworkId
-}
+export type MetricFormat = "number" | "percent"
 
-export type StatFormat = "number" | "percent" | "duration" | "rating" | "currency"
-
-/** A single labelled metric with its change against the previous period. */
-export type Stat = {
+/** A metric for a period. `value: null` means the platform did not report it, which is not the same as 0. */
+export type Metric = {
   id: string
   label: string
-  /** Seconds for `duration`, 0–5 for `rating`, percent points for `percent`, US dollars for `currency`. */
-  value: number
-  format: StatFormat
-  /** Change vs. the previous period, in percent. */
-  change: number
+  format: MetricFormat
+  value: number | null
+  previous: number | null
+  /** Percent change vs the previous period; null when either side is unknown. */
+  change: number | null
+  /** Why it is unavailable, or how an aggregate was computed. */
+  note?: string
 }
 
-export type Kpi = Stat & {
-  series: number[]
+export type SeriesPoint = { date: string; value: number }
+
+export type MetricSeriesId = "followers" | "reach" | "views" | "profile_views" | "clicks" | "accounts_engaged"
+
+export type AccountReport = {
+  accountId: string
+  network: NetworkId
+  handle: string | null
+  status: AccountStatus
+  syncedAt: string | null
+  syncError: string | null
+  /** First day a follower snapshot exists; growth can only be measured from here. */
+  trackingSince: string | null
+  followers: { value: number | null; asOf: string | null; growth: number | null; growthRate: number | null; note?: string }
+  metrics: Metric[]
+  engagement: {
+    rate: number | null
+    previousRate: number | null
+    change: number | null
+    interactions: number | null
+    basis: "reach" | "views" | "followers" | null
+    posts: number
+    note?: string
+  }
+  publishedPosts: number | null
+  publishedPostsPrevious: number | null
+  interactions: Partial<Record<string, number | null>>
+  series: Partial<Record<MetricSeriesId, SeriesPoint[]>>
+  /** Per-metric reasons the last collection could not report something. */
+  unavailable: Record<string, string>
 }
 
 export type TopPost = {
   id: string
   network: NetworkId
+  handle: string | null
   title: string
+  permalink: string | null
+  mediaType: string | null
   publishedAt: string
-  reach: number
-  engagementRate: number
-  clicks: number
+  interactions: number | null
+  engagementRate: number | null
+  engagementBasis: "reach" | "views" | "followers" | null
+  metrics: Partial<Record<string, number>>
 }
 
-export type TimelinePoint = {
-  /** Short axis label. */
-  label: string
-  /** Longer description for tooltips, e.g. "Thu, Oct 9". */
-  detail: string
-  value: number
-}
+export type DemographicItem = { label: string; value: number; share: number }
+export type DemographicDimension = "age" | "gender" | "country" | "city"
 
-/** One bucket of a per-network stacked chart. */
-export type StackedPoint = {
-  label: string
-  detail: string
-  values: Partial<Record<NetworkId, number>>
-}
-
-export type BreakdownItem = {
-  label: string
-  /** Magnitude used for bar length / donut share. */
-  value: number
-  /** Text shown next to the label, e.g. "46%". */
-  display: string
-}
-
-/** A distribution (traffic sources, formats, audience…) rendered as bars or a donut. */
-export type Breakdown = {
-  id: string
-  title: string
-  description?: string
-  variant: "bars" | "donut"
-  items: BreakdownItem[]
-}
-
-/** Engagement intensity (0–100) by weekday and time of day. */
-export type Heatmap = {
+export type BestTimes = {
   days: string[]
   slots: string[]
-  values: number[][]
+  values: (number | null)[][]
   best: { day: string; slot: string }
+  basedOnPosts: number
 }
 
-export type Insight = {
-  id: string
-  tone: "positive" | "neutral" | "attention"
-  title: string
-  body: string
-  network?: NetworkId
-}
-
-/** One row of the cross-network comparison table. */
-export type NetworkRow = {
-  network: NetworkId
-  status: AccountStatus
-  followers: number
-  followerGrowth: number
-  /** Follower growth as a percent of the starting audience. */
-  growthRate: number
-  reach: number
-  impressions: number
-  engagementRate: number
-  clicks: number
-  posts: number
-  /** Share of total reach across all networks, 0–100. */
-  reachShare: number
-}
-
-/** Combined analytics across every connected network. */
-export type AnalyticsSummary = {
-  kpis: Kpi[]
-  impressions: TimelinePoint[]
-  /** Impressions per bucket, split by network. */
-  timeline: StackedPoint[]
-  audience: { network: NetworkId; followers: number; share: number }[]
-  networks: NetworkRow[]
-  contentTypes: Breakdown
-  /** Follower-weighted demographics across connected networks. */
-  demographics: {
-    age: Breakdown | null
-    gender: Breakdown | null
-    countries: Breakdown | null
-    cities: Breakdown | null
-  }
-  heatmap: Heatmap
-  insights: Insight[]
+export type AnalyticsReport = {
+  range: { start: string; end: string; days: number }
+  previousRange: { start: string; end: string; days: number }
+  generatedAt: string
+  kpis: Metric[]
+  accounts: AccountReport[]
   topPosts: TopPost[]
-}
-
-/**
- * Earnings a network reports on top of its audience metrics (YouTube today).
- * Platforms only share revenue for monetized accounts, so there are two shapes:
- * the figures, or the reason there aren't any. All amounts are estimates in USD.
- */
-export type Monetization =
-  | {
-      status: "monetized"
-      kpis: Kpi[]
-      timelineTitle: string
-      timeline: TimelinePoint[]
-      /** Revenue split by source; item values are US dollars. */
-      breakdowns: Breakdown[]
-    }
-  | {
-      status: "not_monetized"
-      /** What the account still needs before the network reports earnings. */
-      reason: string
-    }
-
-/** Analytics for a single network, with metrics that only make sense there. */
-export type NetworkAnalytics = {
-  network: NetworkId
-  status: AccountStatus
-  handle: string | null
-  followers: number
-  /** Names of the metrics this network reports, shown before it is connected. */
-  trackedMetrics: string[]
-  kpis: Kpi[]
-  timelineTitle: string
-  timeline: TimelinePoint[]
-  highlights: Stat[]
-  breakdowns: Breakdown[]
-  /** Present only for networks that report earnings. */
-  monetization?: Monetization
-  heatmap: Heatmap
-  insights: Insight[]
-  topPosts: TopPost[]
+  /** Posts published per day; null when no post data has been synced. */
+  publishing: { date: string; count: number }[] | null
+  demographics: Partial<Record<DemographicDimension, DemographicItem[]>>
+  /** Null until enough posts exist to say anything. */
+  bestTimes: BestTimes | null
+  /** Connected accounts whose network offers no analytics API, with the reason. */
+  unsupported: { accountId: string; network: NetworkId; handle: string | null; reason: string }[]
 }
 
 /* Billing ------------------------------------------------------------------ */

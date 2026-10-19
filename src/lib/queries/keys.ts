@@ -1,4 +1,4 @@
-import type { AnalyticsParams, NetworkAnalyticsParams, PostListParams } from "@/lib/api/types"
+import type { AnalyticsParams, ConversationFilters, PostListParams } from "@/lib/api/types"
 
 /** Single source of truth for cache identities. Invalidate by prefix. */
 export const queryKeys = {
@@ -10,11 +10,17 @@ export const queryKeys = {
     detail: (id: string) => ["posts", "detail", id] as const,
   },
   conversations: ["conversations"] as const,
+  inbox: {
+    all: ["conversations"] as const,
+    list: (filters: ConversationFilters) => ["conversations", "list", filters] as const,
+    preview: (filters: ConversationFilters) => ["conversations", "preview", filters] as const,
+    detail: (id: string) => ["conversations", "detail", id] as const,
+    members: ["conversations", "members"] as const,
+  },
   notifications: ["notifications"] as const,
   analytics: {
     all: ["analytics"] as const,
-    summary: (params: AnalyticsParams) => ["analytics", "summary", params] as const,
-    network: (params: NetworkAnalyticsParams) => ["analytics", "network", params] as const,
+    report: (params: AnalyticsParams) => ["analytics", "report", params] as const,
   },
   billing: ["billing"] as const,
 }

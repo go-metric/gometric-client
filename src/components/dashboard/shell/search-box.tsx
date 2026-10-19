@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { routes } from "@/config/site"
 import { formatWhen } from "@/lib/format"
 import { postDate, postTitle } from "@/lib/posts"
-import { useConversations } from "@/lib/queries/inbox"
+import { useConversationPreview } from "@/lib/queries/inbox"
 import { usePosts } from "@/lib/queries/posts"
 import { cn } from "@/lib/utils"
 
@@ -25,7 +25,8 @@ export function SearchBox() {
   const [expanded, setExpanded] = useState(false)
   const [highlight, setHighlight] = useState(0)
   const { data: posts = [] } = usePosts()
-  const { data: conversations = [] } = useConversations()
+  const { data: found } = useConversationPreview({ q: query.trim(), limit: MAX_PER_GROUP }, query.trim().length > 1)
+  const conversations = useMemo(() => found?.items ?? [], [found])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -60,18 +61,13 @@ export function SearchBox() {
         }
       })
     const conversationResults = conversations
-      .filter(
-        (c) =>
-          c.contact.name.toLowerCase().includes(q) ||
-          c.messages.some((m) => m.text.toLowerCase().includes(q))
-      )
       .slice(0, MAX_PER_GROUP)
       .map((c) => ({
         id: c.id,
         group: "Messages",
         href: `${routes.dashboard.inbox}?c=${c.id}`,
         label: c.contact.name,
-        hint: c.messages.at(-1)?.text,
+        hint: c.lastMessage?.text,
         icon: <PersonAvatar initials={c.contact.initials} color={c.contact.color} size="sm" />,
       }))
     return [...pages, ...postResults, ...conversationResults]

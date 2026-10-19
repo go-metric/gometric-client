@@ -83,11 +83,24 @@ export function TimeSeriesChart({
   const y = (v: number) => 100 - (v / top) * 100
 
   // Each series is drawn on its own, so the fills overlap transparently.
-  const edges = series.map((s) => points.map((p, i): Pt => [x(i), y(p.values[s.id] ?? 0)]))
+  // A day a series has no data for is a gap, not a zero: the line breaks there.
+  const edges = series.map((s) => points.map((p, i): Pt | null => (p.values[s.id] === undefined ? null : [x(i), y(p.values[s.id]!)])))
+  const runs = edges.map((edge) => {
+    const out: Pt[][] = []
+    let cur: Pt[] = []
+    for (const pt of edge) {
+      if (pt) cur.push(pt)
+      else if (cur.length) {
+        out.push(cur)
+        cur = []
+      }
+    }
+    if (cur.length) out.push(cur)
+    return out
+  })
   // Largest series first, so the smaller ones stay visible on top.
   const sums = series.map((s) => points.reduce((sum, p) => sum + (p.values[s.id] ?? 0), 0))
   const drawOrder = series.map((_, k) => k).sort((a, b) => sums[b]! - sums[a]!)
-  const baseline: Pt[] = points.map((_, i) => [x(i), 100])
 
   const onMove = (e: PointerEvent<HTMLDivElement>) => {
     const rect = plotRef.current?.getBoundingClientRect()
@@ -129,35 +142,48 @@ export function TimeSeriesChart({
             </defs>
             {drawOrder.map((k) => {
               const s = series[k]!
-              const upper = smooth(edges[k]!)
-              const lower = smooth([...baseline].reverse()).replace(/^M/, "L")
               return (
                 <g key={s.id}>
-                  <path d={`${upper} ${lower} Z`} fill={`url(#${uid}-${s.id})`} />
-                  <path
-                    d={upper}
-                    fill="none"
-                    stroke={s.color}
-                    strokeWidth={2.25}
-                    vectorEffect="non-scaling-stroke"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                  {runs[k]!.map((run, r) => {
+                    if (run.length === 1) return null // a lone day is drawn as a dot below
+                    const upper = smooth(run)
+                    const lower = smooth(run.map(([px]): Pt => [px, 100]).reverse()).replace(/^M/, "L")
+                    return (
+                      <g key={r}>
+                        <path d={`${upper} ${lower} Z`} fill={`url(#${uid}-${s.id})`} />
+                        <path
+                          d={upper}
+                          fill="none"
+                          stroke={s.color}
+                          strokeWidth={2.25}
+                          vectorEffect="non-scaling-stroke"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </g>
+                    )
+                  })}
                 </g>
               )
             })}
           </svg>
 
-          {n <= 14 && hover === null
+          {(n <= 14 && hover === null) || runs.some((rs) => rs.some((r) => r.length === 1))
             ? edges.flatMap((edge, k) =>
-                edge.map(([px, py], i) => (
+                edge.map((pt, i) => {
+                  if (!pt) return null
+                  const lone = runs[k]!.some((r) => r.length === 1 && r[0] === pt)
+                  if (!(lone || (n <= 14 && hover === null))) return null
+                  const [px, py] = pt
+                  return (
                   <span
                     key={`${k}-${i}`}
                     aria-hidden
                     className="pointer-events-none absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card"
                     style={{ left: `${px}%`, top: `${py}%`, background: series[k]!.color }}
                   />
-                ))
+                  )
+                })
               )
             : null}
 
@@ -165,11 +191,11 @@ export function TimeSeriesChart({
             <>
               <span className="pointer-events-none absolute inset-y-0 w-px bg-foreground/25" style={{ left: `${hx}%` }} />
               {series.map((s, k) => (
-                <span
+                edges[k]![hover!] ? <span
                   key={s.id}
                   className="pointer-events-none absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card"
                   style={{ left: `${hx}%`, top: `${edges[k]![hover!]![1]}%`, background: s.color }}
-                />
+                /> : null
               ))}
               <div
                 className={cn(
@@ -184,7 +210,7 @@ export function TimeSeriesChart({
                     <li key={s.id} className="flex items-center gap-2">
                       <span className="size-2 rounded-full" style={{ background: s.color }} />
                       <span className="flex-1 text-muted-foreground">{s.label}</span>
-                      <span className="font-semibold tabular-nums">{formatValue(hp.values[s.id] ?? 0)}</span>
+                      <span className="font-semibold tabular-nums">{hp.values[s.id] === undefined ? "No data" : formatValue(hp.values[s.id]!)}</span>
                     </li>
                   ))}
                   {multi ? (

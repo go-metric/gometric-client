@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { BookOpen, Mail, MessageSquare } from "lucide-react"
-import { DemoForm } from "@/components/demo-form"
+import { AuthForm } from "@/components/auth/auth-form"
 import { FormField, selectClassName } from "@/components/form-field"
 import { Accent, Container, PageHero } from "@/components/marketing/primitives"
 import { Button } from "@/components/ui/button"
@@ -65,7 +65,8 @@ export default function ContactPage() {
             ))}
           </ul>
 
-          <DemoForm
+          <AuthForm
+            kind="contact"
             id="contact-form"
             className="scroll-mt-24 rounded-[2rem] border border-border bg-card p-6 sm:p-10"
           >
@@ -93,7 +94,7 @@ export default function ContactPage() {
             <Button type="submit" variant="ink" size="lg" className="mt-8 w-full rounded-2xl sm:w-auto sm:px-8">
               Send message
             </Button>
-          </DemoForm>
+          </AuthForm>
         </Container>
       </section>
     </>

@@ -1,42 +1,27 @@
-import { Sparkline } from "@/components/charts"
+import { Info } from "lucide-react"
 import { DeltaBadge } from "@/components/dashboard/ui"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { Kpi, Stat } from "@/lib/api/types"
-import { formatCompact, formatCurrency, formatDuration } from "@/lib/format"
+import type { Metric } from "@/lib/api/types"
+import { formatCompact } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
-export function formatKpi(kpi: Pick<Stat, "value" | "format">) {
-  switch (kpi.format) {
-    case "percent":
-      return `${kpi.value}%`
-    case "duration":
-      return formatDuration(kpi.value)
-    case "rating":
-      return `${kpi.value.toFixed(1)} ★`
-    case "currency":
-      return formatCurrency(kpi.value)
-    default:
-      return formatCompact(kpi.value)
-  }
+/** `null` is "not reported" and must never look like a real zero. */
+export function formatMetric(metric: Pick<Metric, "value" | "format">) {
+  if (metric.value === null) return "Not available"
+  return metric.format === "percent" ? `${metric.value}%` : formatCompact(metric.value)
 }
 
 const cardClass = "min-w-0 rounded-3xl border border-border bg-card p-4 sm:p-5"
 
 export function KpiCards({
   kpis,
-  accent,
   cardClassName,
   skeletons = 4,
-  compact = false,
   className,
 }: {
-  kpis: Kpi[] | undefined
-  /** Sparkline colour; defaults to the brand colour. */
-  accent?: string
+  kpis: Metric[] | undefined
   cardClassName?: string
   skeletons?: number
-  /** Drops the sparkline for a lighter, denser row of numbers. */
-  compact?: boolean
   className?: string
 }) {
   return (
@@ -46,17 +31,30 @@ export function KpiCards({
             <li key={kpi.id} className={cn(cardClass, cardClassName)}>
               <div className="flex items-center justify-between gap-2">
                 <p className="truncate text-xs font-medium text-muted-foreground sm:text-sm">{kpi.label}</p>
-                <DeltaBadge value={kpi.change} />
+                {kpi.change !== null ? <DeltaBadge value={kpi.change} /> : null}
               </div>
-              <p className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{formatKpi(kpi)}</p>
-              {compact ? null : <Sparkline points={kpi.series} stroke={accent} className="mt-3 h-10" />}
+              <p
+                className={cn(
+                  "mt-2 font-semibold tracking-tight",
+                  kpi.value === null ? "text-lg text-muted-foreground sm:text-xl" : "text-2xl sm:text-3xl"
+                )}
+              >
+                {formatMetric(kpi)}
+              </p>
+              {kpi.note ? (
+                <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+                  <Info className="mt-0.5 size-3 shrink-0" />
+                  <span className="line-clamp-3" title={kpi.note}>
+                    {kpi.note}
+                  </span>
+                </p>
+              ) : null}
             </li>
           ))
         : Array.from({ length: skeletons }, (_, i) => (
             <li key={i} className={cn(cardClass, cardClassName)}>
               <Skeleton className="h-3.5 w-1/2" />
               <Skeleton className="mt-3 h-8 w-2/3" />
-              {compact ? null : <Skeleton className="mt-3 h-10 w-full" />}
             </li>
           ))}
     </ul>

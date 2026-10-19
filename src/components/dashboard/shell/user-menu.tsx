@@ -1,5 +1,6 @@
 "use client"
 
+import { useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
 import { CreditCard, Link2, LogOut, Settings } from "lucide-react"
 import {
@@ -12,11 +13,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { routes } from "@/config/site"
+import { authApi } from "@/lib/api/auth"
 import { initials } from "@/lib/format"
 import { useWorkspace } from "@/lib/queries/workspace"
 
 export function UserMenu() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const { data } = useWorkspace()
   const profile = data?.profile
 
@@ -26,7 +29,7 @@ export function UserMenu() {
         aria-label="Account menu"
         className="ml-1 inline-flex size-8 cursor-pointer items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff4d00,#ffb08a)] text-[11px] font-semibold text-white outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        {profile ? initials(profile.name) : ""}
+        <span suppressHydrationWarning>{profile ? initials(profile.name) : ""}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60 rounded-xl p-1.5">
         <DropdownMenuGroup>
@@ -49,7 +52,11 @@ export function UserMenu() {
           Billing
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="py-1.5" variant="destructive" onClick={() => router.push(routes.login)}>
+        <DropdownMenuItem className="py-1.5" variant="destructive" onClick={async () => {
+            await authApi.logout().catch(() => undefined)
+            queryClient.clear()
+            router.push(routes.login)
+          }}>
           <LogOut />
           Log out
         </DropdownMenuItem>

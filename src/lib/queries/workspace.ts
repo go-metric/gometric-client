@@ -115,14 +115,3 @@ export function useUpdateNotificationPrefs() {
     onSuccess: (workspace) => queryClient.setQueryData(key, workspace),
   })
 }
-
-/** Clears the mock DB and refreshes every domain query. Demo-only. */
-export function useResetDemo() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: () => workspaceApi.resetDemo(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries()
-    },
-  })
-}

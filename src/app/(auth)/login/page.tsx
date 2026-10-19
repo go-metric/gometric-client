@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { AuthFooter, AuthHeading } from "@/components/auth/auth-heading"
-import { DemoForm } from "@/components/demo-form"
+import { AuthForm } from "@/components/auth/auth-form"
 import { FormField } from "@/components/form-field"
 import { Accent } from "@/components/marketing/primitives"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,7 @@ export default function LoginPage() {
         }
         description="Log in to plan, reply, and measure across your connected accounts."
       />
-      <DemoForm next={routes.dashboard.overview} className="mt-8 space-y-5">
+      <AuthForm kind="login" className="mt-8 space-y-5">
         <FormField id="email" label="Email">
           <Input id="email" name="email" type="email" autoComplete="email" placeholder="you@brand.com" required />
         </FormField>
@@ -44,7 +44,7 @@ export default function LoginPage() {
         <Button type="submit" variant="ink" size="lg" className="w-full rounded-xl">
           Log in
         </Button>
-      </DemoForm>
+      </AuthForm>
       <AuthFooter>
         New to gometric?{" "}
         <Link href={routes.signup} className="font-semibold text-foreground hover:underline">

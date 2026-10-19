@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { AuthFooter, AuthHeading } from "@/components/auth/auth-heading"
-import { DemoForm } from "@/components/demo-form"
+import { AuthForm } from "@/components/auth/auth-form"
 import { FormField } from "@/components/form-field"
 import { Accent } from "@/components/marketing/primitives"
 import { Button } from "@/components/ui/button"
@@ -22,7 +22,7 @@ export default function SignupPage() {
         }
         description="Create your account, then connect the networks your brand runs on."
       />
-      <DemoForm next={routes.verifyEmail} carry={["email"]} className="mt-8 space-y-5">
+      <AuthForm kind="signup" className="mt-8 space-y-5">
         <FormField id="name" label="Full name">
           <Input id="name" name="name" autoComplete="name" placeholder="Emily Carter" required />
         </FormField>
@@ -49,7 +49,7 @@ export default function SignupPage() {
         <Button type="submit" variant="ink" size="lg" className="w-full rounded-xl">
           Create account
         </Button>
-      </DemoForm>
+      </AuthForm>
       <AuthFooter>
         Already have an account?{" "}
         <Link href={routes.login} className="font-semibold text-foreground hover:underline">

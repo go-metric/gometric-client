@@ -1,41 +1,15 @@
 import type { Metadata } from "next"
 import { MailCheck } from "lucide-react"
 import { AuthFooter, AuthHeading } from "@/components/auth/auth-heading"
-import { Button, ButtonLink } from "@/components/ui/button"
-import { routes } from "@/config/site"
-import { demoBrand } from "@/lib/demo-data"
+import { VerifyEmailDescription, VerifyEmailPanel } from "@/components/auth/verify-email-panel"
 
 export const metadata: Metadata = { title: "Verify your email" }
 
-type Props = {
-  searchParams: Promise<{ email?: string }>
-}
-
-export default async function VerifyEmailPage({ searchParams }: Props) {
-  const params = await searchParams
-  const email = params.email?.trim() || demoBrand.owner.email
-
+export default function VerifyEmailPage() {
   return (
     <>
-      <AuthHeading
-        icon={<MailCheck />}
-        title="Check your inbox"
-        description={
-          <>
-            We sent a verification link to{" "}
-            <strong className="font-semibold text-foreground">{email}</strong>. Click it to activate your
-            account.
-          </>
-        }
-      />
-      <div className="mt-8 space-y-3">
-        <ButtonLink variant="ink" size="lg" className="w-full rounded-xl" href={routes.onboarding.brand}>
-          I&apos;ve verified. Continue
-        </ButtonLink>
-        <Button variant="outline" size="lg" className="w-full rounded-xl">
-          Resend email
-        </Button>
-      </div>
+      <AuthHeading icon={<MailCheck />} title="Check your inbox" description={<VerifyEmailDescription />} />
+      <VerifyEmailPanel />
       <AuthFooter>Can&apos;t find it? Check your spam folder, or wait a minute and resend.</AuthFooter>
     </>
   )
