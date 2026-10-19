@@ -42,11 +42,13 @@ export function AccountsSettings() {
   useEffect(() => {
     const connected = params.get("connected")
     const failure = params.get("error")
+    const warning = params.get("warning")
     if (!connected && !failure) return
     if (connected && isNetworkId(connected)) {
       toast.success(`${networks[connected].name} connected`)
       void refetch()
     }
+    if (warning) toast.warning(warning, { duration: 12_000 })
     if (failure) toast.error(failure)
     router.replace("/dashboard/settings/accounts")
   }, [params, refetch, router])
