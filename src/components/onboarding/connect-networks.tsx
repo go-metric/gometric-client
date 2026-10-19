@@ -18,7 +18,7 @@ export function ConnectNetworks() {
   if (error) return <ErrorState error={error} onRetry={() => refetch()} />
   if (!data) return <ListSkeleton rows={6} className="mt-10" />
 
-  const linked = data.filter((a) => a.status !== "disconnected").length
+  const linked = data.filter((a) => a.status !== "disconnected" && a.available !== false).length
 
   return (
     <div className="mt-10">
@@ -37,9 +37,13 @@ export function ConnectNetworks() {
               <NetworkTile network={account.network} size="lg" />
               <div className="min-w-0 flex-1">
                 <p className="font-semibold">{network.name}</p>
-                <p className="truncate text-xs text-muted-foreground">{isOn ? account.handle : network.accountLabel}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {account.available === false ? "Not integrated yet" : isOn ? account.handle : network.accountLabel}
+                </p>
               </div>
-              {isOn ? (
+              {account.available === false ? (
+                <span className="rounded-full bg-foreground/8 px-2 py-0.5 text-[11px] font-semibold text-foreground/60">Coming soon</span>
+              ) : isOn ? (
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                   <Check className="size-3.5" strokeWidth={3} />
                   Connected

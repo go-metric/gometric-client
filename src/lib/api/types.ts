@@ -75,6 +75,13 @@ export type SocialAccount = {
   connectedAt: string | null
   /** What this connection can do right now, as resolved by the service. */
   capabilities?: Record<CapabilityFeature, CapabilityState>
+  /** False for networks that aren't integrated yet; they can't be connected. */
+  available?: boolean
+  unavailableReason?: string | null
+  /** Whether this account feeds the inbox and analytics. */
+  preferences?: { inbox: boolean; analytics: boolean }
+  /** When the inbox and analytics last synced, and the last problem if any. */
+  sync?: { inboxAt: string | null; inboxError: string | null; analyticsAt: string | null; analyticsError: string | null }
 }
 
 /* Posts -------------------------------------------------------------------- */

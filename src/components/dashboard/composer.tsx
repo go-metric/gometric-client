@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { useRef, useState, type ChangeEvent } from "react"
-import { addDays, format, setHours, setMinutes, startOfMinute } from "date-fns"
+import { addDays, format } from "date-fns"
 import { CalendarClock, Hash, ImagePlus, Link2, RotateCcw, Send, Smile, X } from "lucide-react"
 import { toast } from "sonner"
 import { EmptyState, ErrorState, ListSkeleton, PageHeader, Panel } from "@/components/dashboard/ui"
@@ -17,12 +17,13 @@ import { routes } from "@/config/site"
 import { useNow } from "@/hooks/use-now"
 import type { Post, PostInput, PostInputStatus, PostMedia, SocialAccount } from "@/lib/api/types"
 import { initials } from "@/lib/format"
-import { captionFor, EDITABLE_STATUSES, validatePost } from "@/lib/posts"
+import { captionFor, EDITABLE_STATUSES, publishBlocker, validatePost } from "@/lib/posts"
 import { zonedParts, zonedTimeToIso } from "@/lib/tz"
 import { useBrandTimeZone } from "@/hooks/use-brand-timezone"
 import { useLinkedAccounts } from "@/lib/queries/accounts"
 import { useBilling } from "@/lib/queries/billing"
-import { useCreatePost, usePinterestBoards, usePost, useUpdatePost } from "@/lib/queries/posts"
+import { useAnalyticsReport } from "@/lib/queries/analytics"
+import { useCreatePost, usePinterestBoards, usePost, usePosts, useUpdatePost } from "@/lib/queries/posts"
 import { errorMessage } from "@/lib/api/errors"
 import { mediaApi } from "@/lib/api/media"
 import { activeBrand } from "@/lib/api/workspace"
@@ -33,8 +34,28 @@ const MAX_MEDIA = 10
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024
 const MAX_VIDEO_BYTES = 64 * 1024 * 1024
 const EMOJI = ["✨", "🔥", "🎉", "🙌", "💛", "😍", "🍂", "☕️", "📸", "🎥", "🛍️", "📣", "✅", "👉", "💬", "🚀"]
-const HASHTAGS = ["#newin", "#autumnedit", "#behindthescenes", "#smallbusiness", "#shoplocal", "#studio"]
-const SUGGESTED_HOURS = [9, 13, 18]
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+/** Hashtags this brand already uses, most frequent first. */
+function hashtagsFrom(posts: Post[] | undefined) {
+  const counts = new Map<string, number>()
+  for (const p of posts ?? []) for (const tag of p.body.match(/#[\p{L}\p{N}_]+/gu) ?? []) counts.set(tag, (counts.get(tag) ?? 0) + 1)
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([tag]) => tag)
+}
+
+/** The next time that falls on the analytics' best weekday and time block, in the brand timezone. */
+function nextBestSlot(best: { day: string; slot: string }, now: Date, timeZone: string) {
+  const hour = Number.parseInt(best.slot, 10) + 1 // a block like "08–12" -> 09:00
+  const time = `${String(hour).padStart(2, "0")}:00`
+  const today = zonedParts(now, timeZone).date
+  for (let i = 0; i < 8; i++) {
+    const date = format(addDays(new Date(`${today}T12:00:00Z`), i), "yyyy-MM-dd")
+    if (WEEKDAYS[new Date(`${date}T12:00:00Z`).getUTCDay()] !== best.day) continue
+    const iso = zonedTimeToIso(date, time, timeZone)
+    if (new Date(iso) > now) return { date, time }
+  }
+  return null
+}
 
 /** Loads the post being edited (if any) and mounts a fresh form for it. */
 export function Composer() {
@@ -103,10 +124,12 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
   const create = useCreatePost()
   const update = useUpdatePost()
   const showBestTimes = billing ? billing.subscription.planId !== "free" : false
+  const report = useAnalyticsReport({ range: 90 }, showBestTimes)
+  const history = usePosts({})
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const available = accounts.map((a) => a.network)
+  const available = accounts.filter((a) => !publishBlocker(a)).map((a) => a.network)
   const timeZone = useBrandTimeZone()
   const initial = toLocalParts(post?.status === "scheduled" ? post.scheduledAt : null, timeZone)
   const [selected, setSelected] = useState<NetworkId[]>(
@@ -204,13 +227,9 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
     else create.mutate(input, { onSuccess, onError })
   }
 
-  const suggestions =
-    showBestTimes && now
-      ? SUGGESTED_HOURS.flatMap((h) => {
-          const today = startOfMinute(setMinutes(setHours(now, h), 0))
-          return [today > now ? today : addDays(today, 1)]
-        }).sort((a, b) => a.getTime() - b.getTime())
-      : []
+  // Suggested from this brand's own post performance; nothing is suggested until there's enough data.
+  const best = report.data?.bestTimes
+  const suggestion = best && now ? nextBestSlot(best.best, now, timeZone) : null
 
   return (
     <>
@@ -223,20 +242,24 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
           <ul className="flex flex-wrap gap-2">
             {accounts.map((a) => {
               const on = selected.includes(a.network)
+              const blocked = publishBlocker(a)
               return (
                 <li key={a.network}>
                   <button
                     type="button"
                     aria-pressed={on}
+                    disabled={!!blocked}
+                    title={blocked ?? undefined}
                     onClick={() => toggleNetwork(a.network)}
                     className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded-2xl border py-1.5 pr-3 pl-1.5 text-sm font-medium transition-colors",
-                      on ? "border-foreground bg-foreground/5" : "border-border opacity-60 hover:opacity-100"
+                      "flex cursor-pointer items-center gap-2 rounded-2xl border py-1.5 pr-3 pl-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed",
+                      blocked ? "border-dashed border-border opacity-50" : on ? "border-foreground bg-foreground/5" : "border-border opacity-60 hover:opacity-100"
                     )}
                   >
                     <NetworkTile network={a.network} size="sm" />
                     {a.handle}
                   </button>
+                  {blocked ? <p className="mt-1 max-w-56 text-[11px] text-amber-700 dark:text-amber-300">{blocked}</p> : null}
                 </li>
               )
             })}
@@ -280,7 +303,7 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
                   <ImagePlus />
                 </Button>
                 <InsertPopover label="Emoji" icon={<Smile />} items={EMOJI} onPick={insert} grid />
-                <InsertPopover label="Hashtags" icon={<Hash />} items={HASHTAGS} onPick={insert} />
+                <InsertPopover label="Hashtags you use" icon={<Hash />} items={hashtagsFrom(history.data)} onPick={insert} emptyText="Hashtags from your posts will appear here." />
                 {activeTab !== "all" && overrides[activeTab] !== undefined ? (
                   <Button
                     variant="ghost"
@@ -409,22 +432,19 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
               <TimePicker id="time" value={time} onChange={setTime} placeholder="Pick a time" />
             </FormField>
           </div>
-          {suggestions.length ? (
+          {suggestion && best ? (
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Best times:</span>
-              {suggestions.map((s) => (
-                <button
-                  key={s.toISOString()}
-                  type="button"
-                  onClick={() => {
-                    setDay(format(s, "yyyy-MM-dd"))
-                    setTime(format(s, "HH:mm"))
-                  }}
-                  className="cursor-pointer rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:border-foreground/40"
-                >
-                  {format(s, "EEE HH:mm")}
-                </button>
-              ))}
+              <span className="text-xs text-muted-foreground">Your best time, from {best.basedOnPosts} posts:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setDay(suggestion.date)
+                  setTime(suggestion.time)
+                }}
+                className="cursor-pointer rounded-full border border-border px-2.5 py-1 text-xs font-medium hover:border-foreground/40"
+              >
+                {best.best.day} {suggestion.time}
+              </button>
             </div>
           ) : null}
 
@@ -546,18 +566,21 @@ function InsertPopover({
   items,
   onPick,
   grid = false,
+  emptyText,
 }: {
   label: string
   icon: React.ReactNode
   items: string[]
   onPick: (value: string) => void
   grid?: boolean
+  emptyText?: string
 }) {
   const [open, setOpen] = useState(false)
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={<Button variant="ghost" size="icon-sm" aria-label={label} />}>{icon}</PopoverTrigger>
       <PopoverContent align="start" className={cn("rounded-2xl p-2", grid ? "w-60" : "w-56")}>
+        {items.length === 0 && emptyText ? <p className="px-2 py-1.5 text-xs text-muted-foreground">{emptyText}</p> : null}
         <div className={cn(grid ? "grid grid-cols-8 gap-0.5" : "flex flex-col")}>
           {items.map((item) => (
             <button

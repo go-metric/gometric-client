@@ -8,7 +8,7 @@ import { routes } from "@/config/site"
 import { authApi } from "@/lib/api/auth"
 import { errorMessage } from "@/lib/api/errors"
 
-export function VerifyEmailPanel({ fallbackEmail }: { fallbackEmail: string }) {
+export function VerifyEmailPanel({ fallbackEmail }: { fallbackEmail?: string }) {
   const router = useRouter()
   const params = useSearchParams()
   const token = params.get("token")
@@ -41,6 +41,7 @@ export function VerifyEmailPanel({ fallbackEmail }: { fallbackEmail: string }) {
   const resend = async () => {
     setResending(true)
     try {
+      if (!email) return
       await authApi.resendVerification(email)
       toast.success("Verification email sent")
     } catch (error) {
@@ -74,7 +75,7 @@ export function VerifyEmailPanel({ fallbackEmail }: { fallbackEmail: string }) {
       >
         I&apos;ve verified. Continue
       </Button>
-      <Button variant="outline" size="lg" className="w-full rounded-xl" disabled={resending} onClick={resend}>
+      <Button variant="outline" size="lg" className="w-full rounded-xl" disabled={resending || !email} title={email ? undefined : "Open the link from your email, or sign up again."} onClick={resend}>
         {resending ? "Sending…" : "Resend email"}
       </Button>
     </div>

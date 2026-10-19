@@ -3,7 +3,6 @@ import { Suspense } from "react"
 import { MailCheck } from "lucide-react"
 import { AuthFooter, AuthHeading } from "@/components/auth/auth-heading"
 import { VerifyEmailPanel } from "@/components/auth/verify-email-panel"
-import { demoBrand } from "@/lib/demo-data"
 
 export const metadata: Metadata = { title: "Verify your email" }
 
@@ -13,7 +12,7 @@ type Props = {
 
 export default async function VerifyEmailPage({ searchParams }: Props) {
   const params = await searchParams
-  const email = params.email?.trim() || demoBrand.owner.email
+  const email = params.email?.trim()
 
   return (
     <>
@@ -22,9 +21,14 @@ export default async function VerifyEmailPage({ searchParams }: Props) {
         title="Check your inbox"
         description={
           <>
-            We sent a verification link to{" "}
-            <strong className="font-semibold text-foreground">{email}</strong>. Click it to activate your
-            account. In local development the service also prints the link in its console.
+            {email ? (
+              <>
+                We sent a verification link to <strong className="font-semibold text-foreground">{email}</strong>.
+                Click it to activate your account.
+              </>
+            ) : (
+              "Click the verification link we emailed you to activate your account."
+            )}
           </>
         }
       />

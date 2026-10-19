@@ -7,7 +7,7 @@ export const accountsApi = {
     return api<SocialAccount[]>("/accounts")
   },
 
-  /** Starts OAuth (mock provider on the service → redirects back to accounts settings). */
+  /** Returns the provider consent URL; the service handles the callback and redirects back to settings. */
   async startOAuth(network: NetworkId) {
     const { redirectUrl } = await api<{ redirectUrl: string }>(`/accounts/${network}/oauth/start`)
     return redirectUrl
@@ -15,6 +15,10 @@ export const accountsApi = {
 
   reconnect(network: NetworkId) {
     return api<SocialAccount>(`/accounts/${network}/reconnect`, { method: "POST" })
+  },
+
+  setPreferences(network: NetworkId, prefs: { inbox?: boolean; analytics?: boolean }) {
+    return api<SocialAccount>(`/accounts/${network}/preferences`, { method: "PATCH", body: JSON.stringify(prefs) })
   },
 
   disconnect(network: NetworkId) {
