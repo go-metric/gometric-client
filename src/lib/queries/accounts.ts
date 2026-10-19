@@ -3,7 +3,6 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import type { NetworkId } from "@/config/networks"
 import { accountsApi } from "@/lib/api/accounts"
-import { ApiError } from "@/lib/api/errors"
 import { queryKeys } from "@/lib/queries/keys"
 
 export const accountsOptions = () =>
@@ -34,21 +33,43 @@ function useAccountMutation<TVars>(mutationFn: (vars: TVars) => Promise<unknown>
   })
 }
 
-/** Starts the provider OAuth flow: navigates the browser away to the consent screen. */
-export async function startOAuth(network: NetworkId) {
-  const redirectUrl = await accountsApi.oauthStart(network)
-  window.location.assign(redirectUrl)
+/** Meta networks reject `POST …/reconnect` — must run OAuth again. */
+const OAUTH_RECONNECT_NETWORKS = new Set<NetworkId>(["facebook", "instagram", "threads"])
+
+/** Starts OAuth and navigates to the provider (or mock callback) URL. */
+export function useStartOAuth() {
+  return useMutation({
+    mutationFn: async (network: NetworkId) => {
+      const redirectUrl = await accountsApi.startOAuth(network)
+      window.location.href = redirectUrl
+      return redirectUrl
+    },
+  })
 }
 
-/** Refreshes the token in place where the network supports it, otherwise re-runs OAuth consent. */
-export const useReconnectAccount = () =>
-  useAccountMutation(async (network: NetworkId) => {
-    try {
-      return await accountsApi.reconnect(network)
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 409) return startOAuth(network)
-      throw error
-    }
+/**
+ * Refreshes a connection. X + mock networks use `POST …/reconnect`;
+ * Facebook / Instagram / Threads open OAuth again (`redirected: true`).
+ */
+export function useReconnectAccount() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (network: NetworkId) => {
+      if (OAUTH_RECONNECT_NETWORKS.has(network)) {
+        const redirectUrl = await accountsApi.startOAuth(network)
+        window.location.href = redirectUrl
+        return { redirected: true as const }
+      }
+      await accountsApi.reconnect(network)
+      return { redirected: false as const }
+    },
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.accounts }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.posts.all }),
+      ]),
   })
+}
 
 export const useDisconnectAccount = () => useAccountMutation((network: NetworkId) => accountsApi.disconnect(network))

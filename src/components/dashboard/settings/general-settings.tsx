@@ -11,11 +11,7 @@ import { industries, timezones } from "@/config/workspace"
 import { routes } from "@/config/site"
 import { activeBrand } from "@/lib/api/workspace"
 import type { Brand, Workspace } from "@/lib/api/types"
-import {
-  useUpdateBrand,
-  useUpdateProfile,
-  useWorkspace,
-} from "@/lib/queries/workspace"
+import { useUpdateBrand, useUpdateProfile, useWorkspace } from "@/lib/queries/workspace"
 
 const field = (form: FormData, name: string) => String(form.get(name) ?? "").trim()
 

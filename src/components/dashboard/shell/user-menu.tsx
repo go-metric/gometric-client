@@ -1,8 +1,9 @@
 "use client"
 
-import { useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
+import { useQueryClient } from "@tanstack/react-query"
 import { CreditCard, Link2, LogOut, Settings } from "lucide-react"
+import { toast } from "sonner"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +15,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { routes } from "@/config/site"
 import { authApi } from "@/lib/api/auth"
+import { errorMessage } from "@/lib/api/errors"
+import { setAccessToken, setActiveBrandId } from "@/lib/api/http"
 import { initials } from "@/lib/format"
 import { useWorkspace } from "@/lib/queries/workspace"
 
@@ -23,13 +26,26 @@ export function UserMenu() {
   const { data } = useWorkspace()
   const profile = data?.profile
 
+  const logout = async () => {
+    try {
+      await authApi.logout()
+    } catch (error) {
+      toast.error(errorMessage(error))
+    } finally {
+      setAccessToken(null)
+      setActiveBrandId(null)
+      queryClient.clear()
+      router.push(routes.login)
+    }
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Account menu"
         className="ml-1 inline-flex size-8 cursor-pointer items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff4d00,#ffb08a)] text-[11px] font-semibold text-white outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        <span suppressHydrationWarning>{profile ? initials(profile.name) : ""}</span>
+        {profile ? initials(profile.name) : ""}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60 rounded-xl p-1.5">
         <DropdownMenuGroup>
@@ -52,11 +68,7 @@ export function UserMenu() {
           Billing
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="py-1.5" variant="destructive" onClick={async () => {
-            await authApi.logout().catch(() => undefined)
-            queryClient.clear()
-            router.push(routes.login)
-          }}>
+        <DropdownMenuItem className="py-1.5" variant="destructive" onClick={() => void logout()}>
           <LogOut />
           Log out
         </DropdownMenuItem>

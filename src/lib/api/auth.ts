@@ -1,24 +1,90 @@
-import { http } from "@/lib/api/http"
+import { api, setAccessToken } from "@/lib/api/http"
+import { invalidateAuthSession } from "@/lib/session-cache"
 
-export type SessionInfo = {
+export type AuthMe = {
   userId: string
   profile: { name: string; email: string }
-  workspace: { id: string; activeBrandId: string; brandCount: number }
+  workspace: {
+    id: string
+    activeBrandId: string
+    brandCount: number
+  }
+}
+
+export type LoginResult = {
+  accessToken: string
+  userId: string
+}
+
+export type LoginInput = {
+  email: string
+  password: string
+  /** Persist token in localStorage when true. */
+  remember?: boolean
 }
 
 export const authApi = {
-  signup: (input: { name: string; email: string; password: string }) =>
-    http.post<{ userId: string }>("/auth/signup", input, { allow401: true, noBrand: true }),
-  login: (input: { email: string; password: string }) =>
-    http.post<{ accessToken: string; userId: string }>("/auth/login", input, { allow401: true, noBrand: true }),
-  logout: () => http.post<void>("/auth/logout", undefined, { allow401: true, noBrand: true }),
-  forgotPassword: (email: string) => http.post<void>("/auth/forgot-password", { email }, { allow401: true, noBrand: true }),
-  resetPassword: (input: { token: string; password: string }) =>
-    http.post<void>("/auth/reset-password", input, { allow401: true, noBrand: true }),
-  verifyEmail: (token: string) => http.post<void>("/auth/verify-email", { token }, { allow401: true, noBrand: true }),
-  resendVerification: (email?: string) =>
-    http.post<void>("/auth/resend-verification", { email }, { allow401: true, noBrand: true }),
-  me: () => http.get<SessionInfo>("/auth/me", { noBrand: true }),
-  contact: (input: { name: string; email: string; message: string }) =>
-    http.post<void>("/contact", input, { allow401: true, noBrand: true }),
+  signup(body: { name: string; email: string; password: string }) {
+    return api<{ userId: string }>("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify(body),
+      skipAuthRedirect: true,
+    })
+  },
+
+  async login({ email, password, remember = false }: LoginInput) {
+    const result = await api<LoginResult>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+      skipAuthRedirect: true,
+    })
+    setAccessToken(result.accessToken, { remember })
+    invalidateAuthSession()
+    return result
+  },
+
+  async logout() {
+    try {
+      await api<void>("/auth/logout", { method: "POST", skipAuthRedirect: true })
+    } finally {
+      setAccessToken(null)
+      invalidateAuthSession()
+    }
+  },
+
+  forgotPassword(email: string) {
+    return api<void>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+      skipAuthRedirect: true,
+    })
+  },
+
+  resetPassword(token: string, password: string) {
+    return api<void>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
+      skipAuthRedirect: true,
+    })
+  },
+
+  verifyEmail(token: string) {
+    return api<void>("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+      skipAuthRedirect: true,
+    })
+  },
+
+  resendVerification(email?: string) {
+    return api<void>("/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify(email ? { email } : {}),
+      skipAuthRedirect: true,
+    })
+  },
+
+  me(options?: { skipAuthRedirect?: boolean }) {
+    return api<AuthMe>("/auth/me", { skipAuthRedirect: options?.skipAuthRedirect })
+  },
 }

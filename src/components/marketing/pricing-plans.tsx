@@ -2,9 +2,8 @@
 
 import { useState } from "react"
 import { Check } from "lucide-react"
-import { ButtonLink } from "@/components/ui/button"
+import { SignupOrAppButton } from "@/components/marketing/auth-ctas"
 import { plans, type BillingCycle } from "@/config/pricing"
-import { routes } from "@/config/site"
 import { cn } from "@/lib/utils"
 
 const cycles: { id: BillingCycle; label: string }[] = [
@@ -68,14 +67,15 @@ export function PricingPlans() {
                   / month{paid && cycle === "yearly" ? ", billed yearly" : ""}
                 </span>
               </p>
-              <ButtonLink
+              <SignupOrAppButton
                 size="lg"
                 variant={plan.featured ? "default" : "ink"}
                 className={cn("mt-8 w-full rounded-2xl", plan.featured && "bg-brand text-brand-foreground hover:bg-brand/90")}
-                href={routes.signup}
+                showAuthedArrow={false}
+                authedLabel="Open dashboard"
               >
                 {plan.cta}
-              </ButtonLink>
+              </SignupOrAppButton>
               <ul className="mt-8 space-y-3 border-t border-current/10 pt-8 text-sm">
                 {plan.features.map((f) => (
                   <li key={f} className="flex gap-3">

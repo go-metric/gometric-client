@@ -1,3 +1,4 @@
+import { RedirectIfAuthed } from "@/components/auth/redirect-if-authed"
 import { BrandWordmark } from "@/components/brand-wordmark"
 import { FollowersCard, InboxCard } from "@/components/marketing/mocks"
 import { Accent, Highlight } from "@/components/marketing/primitives"
@@ -11,7 +12,9 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
           <BrandWordmark size="sm" showIcon />
           <ThemeToggle />
         </header>
-        <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">{children}</main>
+        <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">
+          <RedirectIfAuthed>{children}</RedirectIfAuthed>
+        </main>
       </div>
 
       <aside className="relative isolate hidden overflow-hidden bg-[#1f1512] p-12 text-white lg:flex lg:flex-col lg:justify-between xl:p-16">
@@ -27,7 +30,8 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
           <InboxCard className="absolute right-0 bottom-0 rotate-2 text-foreground" />
         </div>
         <p className="text-sm text-white/60">
-          Plan, reply, and measure Instagram, TikTok, YouTube, Google Business, Facebook, X, LinkedIn, Threads, and Pinterest.
+          Plan, reply, and measure Instagram, TikTok, YouTube, Google Business, Facebook, X, LinkedIn, Threads, and
+          Pinterest.
         </p>
       </aside>
     </div>

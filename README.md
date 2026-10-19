@@ -1,13 +1,13 @@
 # gometric-client
 
-Next.js front end for gometric. Marketing site, auth/onboarding screens, and a fully interactive dashboard, all design-complete and client-functional. API calls currently hit an in-browser mock; swap them for the real service when it's ready.
+Next.js front end for gometric. Marketing site, auth/onboarding, and dashboard.
 
 ## Stack
 
 - **Next.js 16** (App Router, Cache Components)
-- **React 19**: TypeScript, Tailwind v4
-- **TanStack Query** for client data (`@tanstack/react-query`)
-- **shadcn / Base UI**: lucide-react, framer-motion, sonner, date-fns
+- **React 19**, TypeScript, Tailwind v4
+- **TanStack Query** for client data
+- **shadcn / Base UI**, lucide-react, framer-motion, sonner, date-fns
 
 ## Getting started
 
@@ -17,6 +17,10 @@ pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
+
+API base URL lives in [`src/config/api.ts`](./src/config/api.ts) (default: `https://api.gometric.social`). Set `useLocal` there to hit a local service.
+
+Seed login (service): `demo@gometric.io` / `password123`
 
 ```bash
 pnpm lint
@@ -29,50 +33,37 @@ pnpm build
 ```
 src/
   app/
-    (marketing)/          Public pages: home, features, pricing, about, contact, legal
+    (marketing)/          Public pages
     (auth)/               Login, signup, password, verify
-    onboarding/           Create brand → connect accounts → ready
-    dashboard/            App shell (sidebar + topbar) and feature screens
+    onboarding/           Create brand → connect → ready
+    dashboard/            App shell and feature screens
   components/
-    dashboard/            Feature UIs, shell pieces, shared dashboard primitives
-    marketing/            Landing sections and product mocks
-    ui/                   shadcn primitives
-  config/                 Static site/product config (networks, features, pricing, FAQ)
+  config/
   lib/
-    api/                  Async API surface the UI talks to
-      mock/               localStorage-backed stand-in for the backend service
+    api/                  HTTP clients for gometric-service
     queries/              TanStack Query keys + hooks
+docs/
+  BACKEND_REQUIREMENTS.md Backend-facing product/API requirements
 ```
 
-## Data layer (mock → real service)
+## Data layer
 
-UI components never talk to storage or HTTP directly. They call hooks in `src/lib/queries/*`, which call functions in `src/lib/api/*`.
+```
+UI → src/lib/queries/* → src/lib/api/* → src/config/api.ts
+```
 
-Today those API modules use `src/lib/api/mock/` (with a ~250 ms delay so loading states are visible). When the backend is ready:
+Auth uses Bearer token (localStorage or sessionStorage via “Keep me logged in”) plus `credentials: "include"` for cookies when the API origin allows them. Brand-scoped calls send `X-Active-Brand-Id`.
 
-1. Replace the body of each function in `src/lib/api/{posts,inbox,accounts,workspace,notifications,analytics,billing}.ts` with `fetch` / client calls to the service.
-2. Delete `src/lib/api/mock/`.
-3. Keep the query hooks, types in `src/lib/api/types.ts`, and the UI unchanged.
+Backend team requirements: [`docs/BACKEND_REQUIREMENTS.md`](./docs/BACKEND_REQUIREMENTS.md).  
+Service frontend contract: `gometric-service/docs/frontend-requirements.md`.
 
-Query keys live in `src/lib/queries/keys.ts` so invalidation stays consistent across features.
+## Dashboard
 
-Demo data resets from **Settings → Danger zone → Reset demo data**. Deleting the workspace clears everything and returns you to onboarding.
-
-Full HTTP contract and user-flow notes for the service team: [`API_REQUIREMENTS.md`](./API_REQUIREMENTS.md).
-
-## Dashboard capabilities (client-only)
-
-- **Overview**: live KPIs, upcoming posts, recent messages, audience
-- **Planner**: week/month views, drag-and-drop reschedule, post actions (edit / publish / duplicate / delete)
-- **Compose**: multi-network posting, per-network captions, media, best-time chips, draft / schedule / publish
-- **Inbox**: filters, reply with saved replies, mark done / unread
-- **Analytics**: range + network filters, sortable top posts, CSV export
-- **Settings**: brands CRUD, profile, connect/reconnect/disconnect accounts (per brand), notification toggles, billing (Free/Starter/Advanced, brand allowance, usage, invoices)
-- **Shell**: brand switcher, search (Ctrl/⌘ K), notifications menu, account menu, unread badge
+- Overview, planner, compose, inbox, analytics, settings (brands, accounts, notifications, billing)
+- Shell: brand switcher, search (Ctrl/⌘ K), notifications, account menu
 
 ## Notes
 
-- Pricing tiers (Metricool-shaped Free / Starter / Advanced) and Privacy/Terms copy are placeholders and labelled as such.
-- Multiple brands per workspace (mock); each brand has one profile per network.
-- Supported networks: Instagram, TikTok, YouTube, Google Business, Facebook, X, LinkedIn, Threads, Pinterest.
-- Auth is design-only; login/signup navigate through the onboarding → dashboard flow without a real session.
+- Supported networks: Instagram, TikTok, YouTube, Google Business, Facebook, X, LinkedIn, Threads, Pinterest
+- **X** has real OAuth + publish on the service when configured; other networks use mock connect for now
+- Pricing copy is draft

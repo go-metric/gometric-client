@@ -1,12 +1,12 @@
 import Link from "next/link"
 import { ArrowRight, Check } from "lucide-react"
+import { SignupOrAppButton } from "@/components/marketing/auth-ctas"
 import { FinalCta } from "@/components/marketing/final-cta"
 import { FeatureWindow } from "@/components/marketing/mocks"
 import { Accent, Container, Eyebrow, PageHero, SectionHeader } from "@/components/marketing/primitives"
 import { Reveal } from "@/components/marketing/reveal"
 import { ButtonLink } from "@/components/ui/button"
 import { featureList, features, type FeatureId } from "@/config/features"
-import { routes } from "@/config/site"
 import { cn } from "@/lib/utils"
 
 export function FeatureHeadline({ id }: { id: FeatureId }) {
@@ -32,10 +32,10 @@ export function FeatureDetail({ id }: { id: FeatureId }) {
         description={feature.body}
       >
         <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <ButtonLink variant="ink" size="xl" href={routes.signup}>
+          <SignupOrAppButton variant="ink" size="xl">
             Sign up free
             <ArrowRight data-icon="inline-end" className="text-brand" />
-          </ButtonLink>
+          </SignupOrAppButton>
           <ButtonLink variant="ghost" size="lg" href="/pricing">
             See pricing
           </ButtonLink>

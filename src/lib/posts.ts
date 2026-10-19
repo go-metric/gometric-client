@@ -39,6 +39,10 @@ export function validatePost(input: PostInput, now = new Date()): string[] {
       problems.push(`${networks[id].name} captions are limited to ${limit.toLocaleString()} characters.`)
     }
   }
+  // Instagram Graph publish requires at least one image URL in media[].
+  if (!isDraft && input.networks.includes("instagram") && input.media.length === 0) {
+    problems.push("Instagram posts need at least one image.")
+  }
   if (input.status === "scheduled") {
     if (!input.scheduledAt) problems.push("Pick a date and time to schedule.")
     else if (new Date(input.scheduledAt) <= now) problems.push("Scheduled time must be in the future.")

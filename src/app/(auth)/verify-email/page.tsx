@@ -1,15 +1,36 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import { MailCheck } from "lucide-react"
 import { AuthFooter, AuthHeading } from "@/components/auth/auth-heading"
-import { VerifyEmailDescription, VerifyEmailPanel } from "@/components/auth/verify-email-panel"
+import { VerifyEmailPanel } from "@/components/auth/verify-email-panel"
+import { demoBrand } from "@/lib/demo-data"
 
 export const metadata: Metadata = { title: "Verify your email" }
 
-export default function VerifyEmailPage() {
+type Props = {
+  searchParams: Promise<{ email?: string }>
+}
+
+export default async function VerifyEmailPage({ searchParams }: Props) {
+  const params = await searchParams
+  const email = params.email?.trim() || demoBrand.owner.email
+
   return (
     <>
-      <AuthHeading icon={<MailCheck />} title="Check your inbox" description={<VerifyEmailDescription />} />
-      <VerifyEmailPanel />
+      <AuthHeading
+        icon={<MailCheck />}
+        title="Check your inbox"
+        description={
+          <>
+            We sent a verification link to{" "}
+            <strong className="font-semibold text-foreground">{email}</strong>. Click it to activate your
+            account. In local development the service also prints the link in its console.
+          </>
+        }
+      />
+      <Suspense fallback={<p className="mt-8 text-sm text-muted-foreground">Loading…</p>}>
+        <VerifyEmailPanel fallbackEmail={email} />
+      </Suspense>
       <AuthFooter>Can&apos;t find it? Check your spam folder, or wait a minute and resend.</AuthFooter>
     </>
   )

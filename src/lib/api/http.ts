@@ -1,74 +1,155 @@
+import { apiBaseUrl as configuredApiBaseUrl } from "@/config/api"
 import { ApiError } from "@/lib/api/errors"
+import { invalidateAuthSession } from "@/lib/session-cache"
+import { routes } from "@/config/site"
 
-const BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000").replace(/\/$/, "")
+const TOKEN_KEY = "gometric:accessToken"
+const REMEMBER_KEY = "gometric:remember"
 
-type Query = Record<string, string | number | boolean | undefined | null>
+let activeBrandId: string | null = null
+let handlingUnauthorized = false
 
-export type RequestOptions = {
-  query?: Query
-  body?: unknown
-  /** Workspace-scoped route (no active-brand scoping). Brand scope comes from the server-side active brand. */
-  noBrand?: boolean
-  /** Do not redirect to login on 401 (auth pages). */
-  allow401?: boolean
+/** Active API origin from `src/config/api.ts`. */
+export function apiBaseUrl() {
+  return configuredApiBaseUrl
 }
 
-function buildUrl(path: string, query?: Query) {
-  const url = new URL(`${BASE_URL}${path}`)
-  for (const [key, value] of Object.entries(query ?? {})) {
-    if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, String(value))
-  }
-  return url.toString()
+export function isRemoteApi() {
+  return apiBaseUrl().length > 0
 }
 
-async function request<T>(method: string, path: string, options: RequestOptions = {}): Promise<T> {
-  const headers: Record<string, string> = {}
-  const isForm = typeof FormData !== "undefined" && options.body instanceof FormData
-  if (options.body !== undefined && !isForm) headers["Content-Type"] = "application/json"
+export function hasAccessToken() {
+  return !!getAccessToken()
+}
 
-  let response: Response
-  try {
-    response = await fetch(buildUrl(path, options.query), {
-      method,
-      headers,
-      credentials: "include",
-      body:
-        options.body === undefined ? undefined : isForm ? (options.body as FormData) : JSON.stringify(options.body),
-    })
-  } catch {
-    throw new ApiError("Can't reach the gometric service. Check your connection and try again.", 0)
+export function getAccessToken() {
+  if (typeof window === "undefined") return null
+  return window.localStorage.getItem(TOKEN_KEY) ?? window.sessionStorage.getItem(TOKEN_KEY)
+}
+
+/**
+ * Store the access token.
+ * `remember: true` → localStorage (survives tab close).
+ * `remember: false` → sessionStorage (cleared when the tab closes).
+ * Omitting `remember` keeps the previous preference (defaults to session).
+ */
+export function setAccessToken(token: string | null, options?: { remember?: boolean }) {
+  if (typeof window === "undefined") return
+
+  window.localStorage.removeItem(TOKEN_KEY)
+  window.sessionStorage.removeItem(TOKEN_KEY)
+
+  if (!token) {
+    window.localStorage.removeItem(REMEMBER_KEY)
+    return
   }
 
-  if (response.status === 204) return undefined as T
-  const text = await response.text()
-  let data: unknown = null
-  if (text) {
-    try {
-      data = JSON.parse(text)
-    } catch {
-      data = null
-    }
+  if (options?.remember !== undefined) {
+    if (options.remember) window.localStorage.setItem(REMEMBER_KEY, "1")
+    else window.localStorage.removeItem(REMEMBER_KEY)
   }
-  if (!response.ok) {
-    const message =
-      data && typeof data === "object" && "message" in data && typeof (data as { message: unknown }).message === "string"
-        ? (data as { message: string }).message
-        : `Request failed (${response.status}).`
-    if (response.status === 401 && !options.allow401 && typeof window !== "undefined") {
-      const here = window.location.pathname
-      if (here.startsWith("/dashboard") || here.startsWith("/onboarding")) {
-        window.location.href = `/login?next=${encodeURIComponent(here)}`
-      }
-    }
-    throw new ApiError(message, response.status)
+
+  const remember =
+    options?.remember ?? window.localStorage.getItem(REMEMBER_KEY) === "1"
+  const store = remember ? window.localStorage : window.sessionStorage
+  store.setItem(TOKEN_KEY, token)
+}
+
+/** Sent as `X-Active-Brand-Id` so brand-scoped routes match the UI switcher. */
+export function setActiveBrandId(brandId: string | null) {
+  activeBrandId = brandId && brandId.length > 0 ? brandId : null
+}
+
+export function getActiveBrandId() {
+  return activeBrandId
+}
+
+/** Clear credentials and send the user to login (once). */
+export function handleUnauthorized(message = "Your session expired. Please log in again.") {
+  if (typeof window === "undefined" || handlingUnauthorized) return
+  const path = window.location.pathname
+  if (path === routes.login || path.startsWith(`${routes.login}/`)) {
+    setAccessToken(null)
+    setActiveBrandId(null)
+    return
   }
+
+  handlingUnauthorized = true
+  setAccessToken(null)
+  setActiveBrandId(null)
+  invalidateAuthSession()
+
+  void import("sonner").then(({ toast }) => toast.error(message))
+
+  const next = `${window.location.pathname}${window.location.search}`
+  const url = next && next !== "/" ? `${routes.login}?next=${encodeURIComponent(next)}` : routes.login
+  window.location.assign(url)
+}
+
+type ApiInit = RequestInit & {
+  /** Skip JSON Content-Type (e.g. FormData uploads). */
+  rawBody?: boolean
+  /** Skip the global 401 redirect (e.g. login/me probes). */
+  skipAuthRedirect?: boolean
+}
+
+/**
+ * Fetch helper for gometric-service.
+ * Uses cookie session (`credentials: "include"`) and optional Bearer token.
+ */
+export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
+  const base = apiBaseUrl()
+  if (!base) {
+    throw new ApiError("API base URL is not configured. Check src/config/api.ts.", 500)
+  }
+
+  const { rawBody, skipAuthRedirect, headers: initHeaders, ...rest } = init
+  const headers = new Headers(initHeaders)
+
+  if (!rawBody && rest.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json")
+  }
+
+  const token = getAccessToken()
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`)
+  }
+
+  const brandId = getActiveBrandId()
+  if (brandId && !headers.has("X-Active-Brand-Id")) {
+    headers.set("X-Active-Brand-Id", brandId)
+  }
+
+  const res = await fetch(`${base}${path}`, {
+    ...rest,
+    credentials: "include",
+    headers,
+  })
+
+  if (res.status === 204) return undefined as T
+
+  const data = (await res.json().catch(() => ({}))) as { message?: string }
+
+  if (!res.ok) {
+    if (res.status === 401 && !skipAuthRedirect) {
+      handleUnauthorized()
+    } else if (res.status === 401) {
+      setAccessToken(null)
+      setActiveBrandId(null)
+      invalidateAuthSession()
+    }
+    throw new ApiError(data.message ?? "Request failed.", res.status)
+  }
+
   return data as T
 }
 
-export const http = {
-  get: <T>(path: string, options?: RequestOptions) => request<T>("GET", path, options),
-  post: <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>("POST", path, { ...options, body }),
-  put: <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>("PUT", path, { ...options, body }),
-  patch: <T>(path: string, body?: unknown, options?: RequestOptions) => request<T>("PATCH", path, { ...options, body }),
-  delete: <T>(path: string, options?: RequestOptions) => request<T>("DELETE", path, options),
+export function toQuery(params: Record<string, string | number | undefined | null>) {
+  const q = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") continue
+    q.set(key, String(value))
+  }
+  const s = q.toString()
+  return s ? `?${s}` : ""
 }

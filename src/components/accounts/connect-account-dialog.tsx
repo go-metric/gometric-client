@@ -1,16 +1,18 @@
 "use client"
 
-import { useState } from "react"
 import { ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 import { NetworkTile } from "@/components/network"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { networks, type NetworkId } from "@/config/networks"
+import { useStartOAuth } from "@/lib/queries/accounts"
 import { errorMessage } from "@/lib/api/errors"
-import { startOAuth } from "@/lib/queries/accounts"
 
-/** Sends the user to the network's consent screen; the service stores the token on callback. */
+/**
+ * Starts the service OAuth flow (mock provider today). Continue redirects to the
+ * network consent URL returned by GET /accounts/:network/oauth/start.
+ */
 export function ConnectAccountDialog({ network, onClose }: { network: NetworkId | null; onClose: () => void }) {
   return (
     <Dialog open={!!network} onOpenChange={(open) => !open && onClose()}>
@@ -22,23 +24,11 @@ export function ConnectAccountDialog({ network, onClose }: { network: NetworkId 
 }
 
 function ConnectForm({ network, onDone }: { network: NetworkId; onDone: () => void }) {
-  const [pending, setPending] = useState(false)
+  const startOAuth = useStartOAuth()
   const { name, accountLabel } = networks[network]
 
   return (
-    <form
-      className="grid gap-4"
-      onSubmit={async (e) => {
-        e.preventDefault()
-        setPending(true)
-        try {
-          await startOAuth(network)
-        } catch (error) {
-          setPending(false)
-          toast.error(errorMessage(error))
-        }
-      }}
-    >
+    <div className="grid gap-4">
       <DialogHeader>
         <NetworkTile network={network} size="lg" />
         <DialogTitle className="mt-2 text-lg">Connect {name}</DialogTitle>
@@ -54,10 +44,19 @@ function ConnectForm({ network, onDone }: { network: NetworkId; onDone: () => vo
         <Button type="button" variant="outline" onClick={onDone}>
           Cancel
         </Button>
-        <Button type="submit" variant="ink" disabled={pending}>
-          {pending ? "Redirecting…" : `Continue to ${name}`}
+        <Button
+          type="button"
+          variant="ink"
+          disabled={startOAuth.isPending}
+          onClick={() =>
+            startOAuth.mutate(network, {
+              onError: (error) => toast.error(errorMessage(error)),
+            })
+          }
+        >
+          {startOAuth.isPending ? "Redirecting…" : `Continue to ${name}`}
         </Button>
       </DialogFooter>
-    </form>
+    </div>
   )
 }

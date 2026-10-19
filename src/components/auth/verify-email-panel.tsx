@@ -1,97 +1,82 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Suspense, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { Button, ButtonLink } from "@/components/ui/button"
 import { routes } from "@/config/site"
 import { authApi } from "@/lib/api/auth"
 import { errorMessage } from "@/lib/api/errors"
 
-function Panel() {
-  const params = useSearchParams()
+export function VerifyEmailPanel({ fallbackEmail }: { fallbackEmail: string }) {
   const router = useRouter()
+  const params = useSearchParams()
   const token = params.get("token")
-  const email = params.get("email")?.trim() ?? ""
-  const [state, setState] = useState<"idle" | "verifying" | "verified" | "failed">(token ? "verifying" : "idle")
-  const [message, setMessage] = useState<string | null>(null)
+  const email = params.get("email")?.trim() || fallbackEmail
+  const [verifying, setVerifying] = useState(!!token)
+  const [verified, setVerified] = useState(false)
   const [resending, setResending] = useState(false)
-  const started = useRef(false)
 
   useEffect(() => {
-    if (!token || started.current) return
-    started.current = true
-    authApi
-      .verifyEmail(token)
-      .then(() => {
-        setState("verified")
-        toast.success("Email verified. Log in to continue.")
-        router.replace(routes.login)
-      })
-      .catch((e) => {
-        setState("failed")
-        setMessage(errorMessage(e))
-      })
-  }, [token, router])
+    if (!token) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        await authApi.verifyEmail(token)
+        if (!cancelled) {
+          setVerified(true)
+          toast.success("Email verified — you can log in")
+        }
+      } catch (error) {
+        if (!cancelled) toast.error(errorMessage(error))
+      } finally {
+        if (!cancelled) setVerifying(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  const resend = async () => {
+    setResending(true)
+    try {
+      await authApi.resendVerification(email)
+      toast.success("Verification email sent")
+    } catch (error) {
+      toast.error(errorMessage(error))
+    } finally {
+      setResending(false)
+    }
+  }
+
+  if (verifying) {
+    return <p className="mt-8 text-sm text-muted-foreground">Verifying your email…</p>
+  }
+
+  if (verified) {
+    return (
+      <div className="mt-8 space-y-3">
+        <ButtonLink variant="ink" size="lg" className="w-full rounded-xl" href={routes.login}>
+          Continue to log in
+        </ButtonLink>
+      </div>
+    )
+  }
 
   return (
     <div className="mt-8 space-y-3">
-      {state === "verifying" ? <p className="text-sm text-muted-foreground">Verifying your email…</p> : null}
-      {state === "failed" ? (
-        <p role="alert" className="text-sm text-destructive">
-          {message ?? "This verification link is invalid or has expired."}
-        </p>
-      ) : null}
-      <ButtonLink variant="ink" size="lg" className="w-full rounded-xl" href={routes.login}>
-        {state === "verified" ? "Continue to log in" : "I've verified. Log in"}
-      </ButtonLink>
       <Button
-        variant="outline"
+        variant="ink"
         size="lg"
         className="w-full rounded-xl"
-        disabled={resending}
-        onClick={async () => {
-          setResending(true)
-          try {
-            await authApi.resendVerification(email || undefined)
-            toast.success("Verification email sent.")
-          } catch (e) {
-            toast.error(errorMessage(e))
-          } finally {
-            setResending(false)
-          }
-        }}
+        onClick={() => router.push(routes.login)}
       >
+        I&apos;ve verified. Continue
+      </Button>
+      <Button variant="outline" size="lg" className="w-full rounded-xl" disabled={resending} onClick={resend}>
         {resending ? "Sending…" : "Resend email"}
       </Button>
     </div>
-  )
-}
-
-export function VerifyEmailDescription() {
-  return (
-    <Suspense fallback="Click the verification link we emailed you to activate your account.">
-      <Description />
-    </Suspense>
-  )
-}
-
-function Description() {
-  const email = useSearchParams().get("email")?.trim()
-  return email ? (
-    <>
-      We sent a verification link to <strong className="font-semibold text-foreground">{email}</strong>. Click it to
-      activate your account.
-    </>
-  ) : (
-    "Click the verification link we emailed you to activate your account."
-  )
-}
-
-export function VerifyEmailPanel() {
-  return (
-    <Suspense fallback={null}>
-      <Panel />
-    </Suspense>
   )
 }

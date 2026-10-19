@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { ConnectAccountDialog } from "@/components/accounts/connect-account-dialog"
@@ -18,27 +18,27 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { networks, type NetworkId } from "@/config/networks"
-import { errorMessage } from "@/lib/api/errors"
+import { isNetworkId, networks, type NetworkId } from "@/config/networks"
 import type { CapabilityFeature, SocialAccount } from "@/lib/api/types"
 import { formatCompact } from "@/lib/format"
 import { useAccounts, useDisconnectAccount, useReconnectAccount } from "@/lib/queries/accounts"
 
 export function AccountsSettings() {
+  const router = useRouter()
+  const params = useSearchParams()
   const { data, error, refetch } = useAccounts()
   const reconnect = useReconnectAccount()
   const disconnect = useDisconnectAccount()
   const [connecting, setConnecting] = useState<NetworkId | null>(null)
   const [disconnecting, setDisconnecting] = useState<NetworkId | null>(null)
 
-  const params = useSearchParams()
-  const justConnected = params.get("connected")
-  const oauthError = params.get("error")
   useEffect(() => {
-    if (justConnected && justConnected in networks) toast.success(`${networks[justConnected as NetworkId].name} connected`)
-    if (oauthError) toast.error(oauthError)
-    if (justConnected || oauthError) window.history.replaceState(null, "", window.location.pathname)
-  }, [justConnected, oauthError])
+    const connected = params.get("connected")
+    if (!connected || !isNetworkId(connected)) return
+    toast.success(`${networks[connected].name} connected`)
+    void refetch()
+    router.replace("/dashboard/settings/accounts")
+  }, [params, refetch, router])
 
   const connected = data?.filter((a) => a.status !== "disconnected") ?? []
   const available = data?.filter((a) => a.status === "disconnected") ?? []
@@ -75,8 +75,10 @@ export function AccountsSettings() {
                       disabled={reconnect.isPending}
                       onClick={() =>
                         reconnect.mutate(account.network, {
-                          onSuccess: () => toast.success(`${network.name} reconnected`),
-                          onError: (e) => toast.error(errorMessage(e)),
+                          onSuccess: (result) => {
+                            // Meta reconnect redirects; success toast comes from `?connected=` on return.
+                            if (!result.redirected) toast.success(`${network.name} reconnected`)
+                          },
                         })
                       }
                     >
@@ -119,7 +121,6 @@ export function AccountsSettings() {
                 if (!disconnecting) return
                 const name = networks[disconnecting].name
                 disconnect.mutate(disconnecting, {
-                  onError: (e) => toast.error(errorMessage(e)),
                   onSuccess: () => {
                     toast.success(`${name} disconnected`)
                     setDisconnecting(null)
