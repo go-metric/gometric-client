@@ -79,13 +79,37 @@ export type SocialAccount = {
 
 /* Posts -------------------------------------------------------------------- */
 
-export type PostStatus = "draft" | "scheduled" | "published"
+/**
+ * `publishing` = delivery in progress or waiting for an automatic retry; `partial` = some networks
+ * published and others failed; `failed` = every network failed.
+ */
+export type PostStatus = "draft" | "scheduled" | "publishing" | "published" | "partial" | "failed"
+
+/** Statuses a client may ask for when saving. "published" means publish now. */
+export type PostInputStatus = "draft" | "scheduled" | "published"
 
 export type PostMedia = {
   id: string
   name: string
-  /** Data URL in the mock layer; a CDN URL once uploads go to the service. */
   url: string
+  mimeType?: string
+}
+
+export type DeliveryStatus = "pending" | "publishing" | "published" | "failed" | "deleted"
+
+export type PostDelivery = {
+  network: NetworkId
+  status: DeliveryStatus
+  externalUrl: string | null
+  /** Caveat on a successful delivery, e.g. TikTok inbox hand-off. */
+  note: string | null
+  error: string | null
+  errorCode: string | null
+  attempts: number
+  publishedAt: string | null
+  nextAttemptAt: string | null
+  /** Whether the platform's API lets us delete this post. */
+  canRemove: boolean
 }
 
 export type Post = {
@@ -95,8 +119,11 @@ export type Post = {
   body: string
   /** Per-network caption overrides; falls back to `body`. */
   overrides: Partial<Record<NetworkId, string>>
+  /** Per-network publish options, e.g. `{ pinterest: { boardId, link } }`. */
+  options: Record<string, Record<string, unknown>>
   media: PostMedia[]
   status: PostStatus
+  deliveries: PostDelivery[]
   /** ISO timestamp. Required for scheduled posts. */
   scheduledAt: string | null
   publishedAt: string | null
@@ -104,14 +131,28 @@ export type Post = {
   updatedAt: string
 }
 
-export type PostInput = Pick<Post, "networks" | "body" | "overrides" | "media" | "status" | "scheduledAt">
+export type PostInput = Pick<Post, "networks" | "body" | "overrides" | "media" | "scheduledAt"> & {
+  status: PostInputStatus
+  options?: Post["options"]
+}
 
 export type PostListParams = {
   /** Inclusive ISO range on `scheduledAt` / `publishedAt`. */
   from?: string
   to?: string
-  status?: PostStatus
+  /** One status or several, comma-separated. */
+  status?: string
 }
+
+export type PublishLogEntry = {
+  id: string
+  network: NetworkId | null
+  event: string
+  message: string
+  at: string
+}
+
+export type PinterestBoard = { id: string; name: string; privacy: string | null }
 
 /* Inbox -------------------------------------------------------------------- */
 

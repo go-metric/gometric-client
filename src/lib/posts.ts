@@ -1,6 +1,9 @@
 import { networks, type NetworkId } from "@/config/networks"
 import type { Post, PostInput } from "@/lib/api/types"
 
+/** Statuses where nothing has gone out yet, so the post can still be edited, moved or sent. */
+export const EDITABLE_STATUSES: Post["status"][] = ["draft", "scheduled", "failed"]
+
 /** First line of the caption, used as the post's title in lists. */
 export function postTitle(post: Pick<Post, "body">) {
   const first = post.body.split("\n").find((line) => line.trim())

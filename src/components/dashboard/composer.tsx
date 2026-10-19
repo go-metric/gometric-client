@@ -6,7 +6,7 @@ import { addDays, format, setHours, setMinutes, startOfMinute } from "date-fns"
 import { CalendarClock, Hash, ImagePlus, Link2, RotateCcw, Send, Smile, X } from "lucide-react"
 import { toast } from "sonner"
 import { EmptyState, ErrorState, ListSkeleton, PageHeader, Panel } from "@/components/dashboard/ui"
-import { FormField } from "@/components/form-field"
+import { FormField, selectClassName } from "@/components/form-field"
 import { NetworkTile } from "@/components/network"
 import { Button, ButtonLink } from "@/components/ui/button"
 import { DatePicker } from "@/components/ui/date-picker"
@@ -15,20 +15,23 @@ import { TimePicker } from "@/components/ui/time-picker"
 import { networks, type NetworkId } from "@/config/networks"
 import { routes } from "@/config/site"
 import { useNow } from "@/hooks/use-now"
-import type { Post, PostInput, PostMedia, PostStatus, SocialAccount } from "@/lib/api/types"
+import type { Post, PostInput, PostInputStatus, PostMedia, SocialAccount } from "@/lib/api/types"
 import { initials } from "@/lib/format"
-import { captionFor, validatePost } from "@/lib/posts"
+import { captionFor, EDITABLE_STATUSES, validatePost } from "@/lib/posts"
+import { zonedParts, zonedTimeToIso } from "@/lib/tz"
+import { useBrandTimeZone } from "@/hooks/use-brand-timezone"
 import { useLinkedAccounts } from "@/lib/queries/accounts"
 import { useBilling } from "@/lib/queries/billing"
-import { useCreatePost, usePost, useUpdatePost } from "@/lib/queries/posts"
+import { useCreatePost, usePinterestBoards, usePost, useUpdatePost } from "@/lib/queries/posts"
 import { errorMessage } from "@/lib/api/errors"
 import { mediaApi } from "@/lib/api/media"
 import { activeBrand } from "@/lib/api/workspace"
 import { useWorkspace } from "@/lib/queries/workspace"
 import { cn } from "@/lib/utils"
 
-const MAX_MEDIA = 4
-const MAX_MEDIA_BYTES = 1.5 * 1024 * 1024
+const MAX_MEDIA = 10
+const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024
+const MAX_VIDEO_BYTES = 64 * 1024 * 1024
 const EMOJI = ["✨", "🔥", "🎉", "🙌", "💛", "😍", "🍂", "☕️", "📸", "🎥", "🛍️", "📣", "✅", "👉", "💬", "🚀"]
 const HASHTAGS = ["#newin", "#autumnedit", "#behindthescenes", "#smallbusiness", "#shoplocal", "#studio"]
 const SUGGESTED_HOURS = [9, 13, 18]
@@ -45,13 +48,17 @@ export function Composer() {
   if (post.error) return <ErrorState error={post.error} onRetry={() => post.refetch()} />
   if (!accounts.data || (postId && !post.data)) return <ListSkeleton rows={6} />
 
-  if (post.data?.status === "published") {
+  if (post.data && !EDITABLE_STATUSES.includes(post.data.status)) {
     return (
       <Panel>
         <EmptyState
           icon={<Send />}
-          title="This post is already published"
-          description="Published posts can't be edited. Duplicate it from the planner to post a new version."
+          title={post.data.status === "publishing" ? "This post is being published" : "This post has already gone out"}
+          description={
+            post.data.status === "publishing"
+              ? "Wait for delivery to finish, then check the planner."
+              : "Posts that have been published can't be edited. Duplicate it from the planner to post a new version."
+          }
           action={
             <ButtonLink variant="ink" href={routes.dashboard.planner}>
               Back to planner
@@ -82,10 +89,9 @@ export function Composer() {
   return <ComposerForm key={postId ?? `new-${date}`} post={post.data ?? null} date={date} accounts={accounts.data} />
 }
 
-function toLocalParts(iso: string | null) {
+function toLocalParts(iso: string | null, timeZone: string) {
   if (!iso) return { date: "", time: "" }
-  const d = new Date(iso)
-  return { date: format(d, "yyyy-MM-dd"), time: format(d, "HH:mm") }
+  return zonedParts(iso, timeZone)
 }
 
 function ComposerForm({ post, date, accounts }: { post: Post | null; date: string | null; accounts: SocialAccount[] }) {
@@ -101,12 +107,14 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
   const fileRef = useRef<HTMLInputElement>(null)
 
   const available = accounts.map((a) => a.network)
-  const initial = toLocalParts(post?.scheduledAt ?? null)
+  const timeZone = useBrandTimeZone()
+  const initial = toLocalParts(post?.status === "scheduled" ? post.scheduledAt : null, timeZone)
   const [selected, setSelected] = useState<NetworkId[]>(
     post?.networks.filter((n) => available.includes(n)) ?? available.slice(0, 1)
   )
   const [body, setBody] = useState(post?.body ?? "")
   const [overrides, setOverrides] = useState<Post["overrides"]>(post?.overrides ?? {})
+  const [options, setOptions] = useState<Post["options"]>(post?.options ?? {})
   const [media, setMedia] = useState<PostMedia[]>(post?.media ?? [])
   const [day, setDay] = useState(initial.date || date || "")
   const [time, setTime] = useState(initial.time || (date ? "09:00" : ""))
@@ -117,6 +125,9 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
   const previewNetwork = activeTab !== "all" ? activeTab : selected[0]
   const value = activeTab === "all" ? body : (overrides[activeTab] ?? body)
   const saving = create.isPending || update.isPending
+  const boards = usePinterestBoards(selected.includes("pinterest"))
+  const pinterest = (options.pinterest ?? {}) as { boardId?: string; link?: string; title?: string }
+  const setPinterest = (patch: Partial<typeof pinterest>) => setOptions((prev) => ({ ...prev, pinterest: { ...pinterest, ...patch } }))
 
   const toggleNetwork = (id: NetworkId) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((n) => n !== id) : [...prev, id]))
@@ -140,10 +151,11 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
 
   const addFiles = async (files: File[]) => {
     const room = MAX_MEDIA - media.length
-    if (files.length > room) toast.error(`You can attach up to ${MAX_MEDIA} images.`)
+    if (files.length > room) toast.error(`You can attach up to ${MAX_MEDIA} files.`)
     const accepted = files.slice(0, Math.max(room, 0)).filter((f) => {
-      if (f.size <= MAX_MEDIA_BYTES) return true
-      toast.error(`${f.name} is larger than 1.5 MB.`)
+      const video = f.type.startsWith("video/")
+      if (f.size <= (video ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) return true
+      toast.error(`${f.name} is larger than ${video ? "64 MB" : "1.5 MB"}.`)
       return false
     })
     if (!accepted.length) return
@@ -155,27 +167,41 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
     }
   }
 
-  const buildInput = (status: PostStatus): PostInput => {
+  const buildInput = (status: PostInputStatus): PostInput => {
     const cleanOverrides = Object.fromEntries(
       Object.entries(overrides).filter(([n, text]) => selected.includes(n as NetworkId) && text !== body)
     )
-    const scheduledAt = day && time ? new Date(`${day}T${time}`).toISOString() : null
-    return { networks: selected, body, overrides: cleanOverrides, media, status, scheduledAt }
+    // The date and time are wall-clock in the brand's timezone, not the browser's.
+    const scheduledAt = day && time ? zonedTimeToIso(day, time, timeZone) : null
+    const cleanOptions = Object.fromEntries(Object.entries(options).filter(([n]) => selected.includes(n as NetworkId)))
+    return { networks: selected, body, overrides: cleanOverrides, options: cleanOptions, media, status, scheduledAt }
   }
 
-  const submit = (status: PostStatus) => {
+  const submit = (status: PostInputStatus) => {
     const input = buildInput(status)
     const problems = validatePost(input)
     setErrors(problems)
     if (problems.length) return
 
     const messages = { draft: "Draft saved", scheduled: "Post scheduled", published: "Post published" }
-    const onSuccess = () => {
-      toast.success(messages[status])
+    const onSuccess = (saved: Post) => {
+      // The service reports what actually happened; never claim success it didn't confirm.
+      if (saved.status === "failed" || saved.status === "partial") {
+        const reasons = saved.deliveries.filter((d) => d.status === "failed").map((d) => `${networks[d.network].name}: ${d.error ?? "failed"}`)
+        toast.error(saved.status === "failed" ? "Publishing failed" : "Published to some networks only", { description: reasons.join(" · ") })
+        router.push(`${routes.dashboard.compose}?post=${saved.id}`)
+        return
+      }
+      if (saved.status === "publishing") {
+        toast.info("Publishing… a network is retrying automatically. Check the planner for the result.")
+      } else {
+        toast.success(messages[status])
+      }
       router.push(routes.dashboard.planner)
     }
-    if (post) update.mutate({ id: post.id, patch: input }, { onSuccess })
-    else create.mutate(input, { onSuccess })
+    const onError = (error: unknown) => setErrors([errorMessage(error)])
+    if (post) update.mutate({ id: post.id, patch: input }, { onSuccess, onError })
+    else create.mutate(input, { onSuccess, onError })
   }
 
   const suggestions =
@@ -277,7 +303,7 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
             <input
               ref={fileRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm"
               multiple
               hidden
               onChange={(e: ChangeEvent<HTMLInputElement>) => {
@@ -291,8 +317,12 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
             <ul className="mt-4 flex flex-wrap gap-2">
               {media.map((m) => (
                 <li key={m.id} className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- local data URLs */}
-                  <img src={m.url} alt={m.name} className="size-20 rounded-xl object-cover" />
+                  {m.mimeType?.startsWith("video/") ? (
+                    <video src={m.url} className="size-20 rounded-xl object-cover" muted aria-label={m.name} />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element -- uploaded media served by the API
+                    <img src={m.url} alt={m.name} className="size-20 rounded-xl object-cover" />
+                  )}
                   <button
                     type="button"
                     aria-label={`Remove ${m.name}`}
@@ -311,22 +341,62 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault()
-                void addFiles(Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/")))
+                void addFiles(Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/")))
               }}
               className="mt-4 flex h-24 w-full cursor-pointer items-center justify-center rounded-2xl border border-dashed border-foreground/25 text-sm text-muted-foreground transition-colors hover:border-foreground/50"
             >
               <ImagePlus className="mr-2 size-4" />
-              Drop images here or click to upload
+              Drop images or videos here, or click to upload
             </button>
           )}
-          {selected.includes("instagram") && media.length === 0 ? (
-            <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
-              Instagram needs at least one image to publish or schedule.
-            </p>
+          <NetworkHints selected={selected} media={media} />
+
+          {selected.includes("pinterest") ? (
+            <div className="mt-4 grid gap-4 rounded-2xl border border-border p-4 sm:grid-cols-2">
+              <FormField id="pin-board" label="Pinterest board" hint={boards.error ? errorMessage(boards.error) : undefined}>
+                <select
+                  id="pin-board"
+                  className={selectClassName}
+                  value={pinterest.boardId ?? ""}
+                  disabled={boards.isLoading || !!boards.error}
+                  onChange={(e) => setPinterest({ boardId: e.target.value })}
+                >
+                  <option value="">{boards.isLoading ? "Loading boards…" : "Choose a board"}</option>
+                  {boards.data?.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </FormField>
+              <FormField id="pin-link" label="Destination link (optional)">
+                <input
+                  id="pin-link"
+                  type="url"
+                  value={pinterest.link ?? ""}
+                  onChange={(e) => setPinterest({ link: e.target.value })}
+                  placeholder="https://"
+                  className="h-10 w-full rounded-xl border border-input bg-card px-3.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                />
+              </FormField>
+            </div>
+          ) : null}
+
+          {post && post.deliveries.some((d) => d.status === "failed") ? (
+            <ul role="alert" className="mt-4 space-y-1 rounded-2xl bg-destructive/8 p-3 text-sm text-destructive">
+              <li className="font-semibold">These networks didn&apos;t publish:</li>
+              {post.deliveries
+                .filter((d) => d.status === "failed")
+                .map((d) => (
+                  <li key={d.network}>
+                    • {networks[d.network].name}: {d.error ?? "failed"}
+                  </li>
+                ))}
+            </ul>
           ) : null}
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <FormField id="date" label="Date">
+            <FormField id="date" label="Date" hint={`Times are in ${timeZone}.`}>
               <DatePicker
                 id="date"
                 value={day}
@@ -375,7 +445,7 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
             </Button>
             <Button variant="outline" disabled={saving} onClick={() => submit("published")}>
               <Send data-icon="inline-start" />
-              Publish now
+              {saving ? "Working…" : post?.status === "failed" ? "Publish again" : "Publish now"}
             </Button>
             <Button variant="ink" disabled={saving} onClick={() => submit("scheduled")}>
               <CalendarClock data-icon="inline-start" />
@@ -418,13 +488,17 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {networks[previewNetwork].name}
-                    {day && time ? ` · ${format(new Date(`${day}T${time}`), "MMM d, HH:mm")}` : ""}
+                    {day && time ? ` · ${format(new Date(`${day}T${time}:00`), "MMM d, HH:mm")}` : ""}
                   </p>
                 </div>
               </div>
               {media[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element -- local data URLs
-                <img src={media[0].url} alt="" className="aspect-[4/3] w-full object-cover" />
+                media[0].mimeType?.startsWith("video/") ? (
+                  <video src={media[0].url} className="aspect-[4/3] w-full object-cover" muted controls />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element -- uploaded media served by the API
+                  <img src={media[0].url} alt="" className="aspect-[4/3] w-full object-cover" />
+                )
               ) : (
                 <div className="aspect-[4/3] bg-gradient-to-br from-orange-500 via-amber-400 to-lime-400" />
               )}
@@ -504,5 +578,26 @@ function InsertPopover({
         </div>
       </PopoverContent>
     </Popover>
+  )
+}
+
+const networkNotes: Partial<Record<NetworkId, (media: PostMedia[]) => string | null>> = {
+  instagram: (m) => (m.length === 0 ? "Instagram needs at least one image or a video." : null),
+  tiktok: (m) => (m.filter((x) => x.mimeType?.startsWith("video/")).length !== 1 ? "TikTok needs exactly one video." : null),
+  pinterest: (m) => (m.length !== 1 ? "Pinterest pins need exactly one image." : null),
+  x: (m) => (m.length ? "X posting is text-only for now; remove the media or deselect X." : null),
+  threads: (m) => (m.length ? "Threads posting is text-only for now; remove the media or deselect Threads." : null),
+}
+
+/** Platform media rules, shown before the user hits Publish. The service enforces them too. */
+function NetworkHints({ selected, media }: { selected: NetworkId[]; media: PostMedia[] }) {
+  const hints = selected.map((n) => networkNotes[n]?.(media)).filter((h): h is string => !!h)
+  if (hints.length === 0) return null
+  return (
+    <ul className="mt-2 space-y-1 text-xs text-amber-700 dark:text-amber-300">
+      {hints.map((h) => (
+        <li key={h}>{h}</li>
+      ))}
+    </ul>
   )
 }

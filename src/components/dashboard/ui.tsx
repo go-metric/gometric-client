@@ -122,14 +122,26 @@ export function ListSkeleton({ rows = 4, className }: { rows?: number; className
 
 const postStatusStyles: Record<PostStatus, string> = {
   scheduled: "bg-sky-500/12 text-sky-700 dark:text-sky-300",
+  publishing: "bg-violet-500/12 text-violet-700 dark:text-violet-300",
   published: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
+  partial: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  failed: "bg-red-500/12 text-red-700 dark:text-red-300",
   draft: "bg-foreground/8 text-foreground/70",
+}
+
+export const postStatusLabels: Record<PostStatus, string> = {
+  draft: "Draft",
+  scheduled: "Scheduled",
+  publishing: "Publishing",
+  published: "Published",
+  partial: "Partly published",
+  failed: "Failed",
 }
 
 export function PostStatusBadge({ status }: { status: PostStatus }) {
   return (
-    <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize", postStatusStyles[status])}>
-      {status}
+    <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold", postStatusStyles[status])}>
+      {postStatusLabels[status]}
     </span>
   )
 }
