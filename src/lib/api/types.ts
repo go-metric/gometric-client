@@ -475,3 +475,27 @@ export type ReportScheduleInput = Pick<ReportSchedule, "name" | "frequency" | "r
   Partial<Pick<ReportSchedule, "weekday" | "dayOfMonth" | "hour" | "rangeDays" | "sections" | "enabled">>
 
 export type ReportPdfParams = { range?: number; end?: string; network?: NetworkId; sections?: ReportSection[] }
+
+export type TikTokProfile = {
+  displayName: string | null
+  username: string | null
+  avatarUrl: string | null
+  bio: string | null
+  profileUrl: string | null
+  verified: boolean
+  followers: number | null
+  following: number | null
+  likes: number | null
+  videoCount: number | null
+}
+
+export type TikTokVideo = {
+  id: string
+  title: string
+  coverUrl: string | null
+  shareUrl: string | null
+  createdAt: string | null
+  views: number | null
+  likes: number | null
+  comments: number | null
+}

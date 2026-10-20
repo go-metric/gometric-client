@@ -4,6 +4,7 @@ import type { AnalyticsParams, ConversationFilters, PostListParams } from "@/lib
 export const queryKeys = {
   workspace: ["workspace"] as const,
   accounts: ["accounts"] as const,
+  tiktok: { profile: ["tiktok", "profile"] as const, videos: ["tiktok", "videos"] as const },
   posts: {
     all: ["posts"] as const,
     list: (params: PostListParams) => ["posts", "list", params] as const,

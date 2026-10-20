@@ -3,6 +3,7 @@
 import { format, parseISO } from "date-fns"
 import { BarChart3, Info, Link2 } from "lucide-react"
 import { BestTimePanel, DemographicsPanels, PublishingPanel, SourceNotes, TopPostsPanel, TrendPanel } from "@/components/dashboard/analytics/report-widgets"
+import { TikTokProfileCard, TikTokVideosPanel } from "@/components/dashboard/analytics/tiktok-panels"
 import { KpiCards } from "@/components/dashboard/kpi-cards"
 import { EmptyState, Panel } from "@/components/dashboard/ui"
 import { ProgressBar } from "@/components/charts"
@@ -83,6 +84,7 @@ export function NetworkDashboard({ network, data, rangeLabel }: { network: Netwo
         {name} {account?.handle} · {rangeLabel}
         {account?.trackingSince ? ` · tracking since ${format(parseISO(account.trackingSince), "MMM d, yyyy")}` : ""}
       </p>
+      {network === "tiktok" && account ? <TikTokProfileCard /> : null}
       <KpiCards kpis={kpis} skeletons={6} className="sm:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4" />
 
       <TrendPanel accounts={data?.accounts} loading={!data} title={`${name} trends`} />
@@ -116,6 +118,8 @@ export function NetworkDashboard({ network, data, rangeLabel }: { network: Netwo
       </div>
 
       <DemographicsPanels report={data} />
+
+      {network === "tiktok" && account ? <TikTokVideosPanel /> : null}
 
       <TopPostsPanel posts={data?.topPosts} title={`Best-performing ${name} posts`} />
 
