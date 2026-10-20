@@ -88,6 +88,8 @@ export const useSetAccountPreferences = () =>
     accountsApi.setPreferences(network, prefs)
   )
 
+export const useConnectPinterestSandboxToken = () => useAccountMutation((token: string) => accountsApi.connectPinterestSandboxToken(token))
+
 export const useDisconnectAccount = () => useAccountMutation((network: NetworkId) => accountsApi.disconnect(network))
 
 /** Live TikTok profile; only fetched while the TikTok analytics tab is open and the account is connected. */

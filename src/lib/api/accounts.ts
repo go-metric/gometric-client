@@ -21,6 +21,11 @@ export const accountsApi = {
     return api<SocialAccount>(`/accounts/${network}/preferences`, { method: "PATCH", body: JSON.stringify(prefs) })
   },
 
+  /** Pinterest sandbox only: connect with a sandbox access token generated in the Pinterest developer portal. */
+  connectPinterestSandboxToken(token: string) {
+    return api<{ network: NetworkId; handle: string | null }>("/accounts/pinterest/sandbox-token", { method: "POST", body: JSON.stringify({ token }) })
+  },
+
   /** Live TikTok profile (Login Kit and Display API). */
   tiktokProfile() {
     return api<TikTokProfile>("/accounts/tiktok/profile")

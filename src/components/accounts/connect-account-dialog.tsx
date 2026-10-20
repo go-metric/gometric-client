@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { networks, type NetworkId } from "@/config/networks"
-import { useAccounts, useStartOAuth } from "@/lib/queries/accounts"
+import { useAccounts, useConnectPinterestSandboxToken, useStartOAuth } from "@/lib/queries/accounts"
 import { errorMessage } from "@/lib/api/errors"
 
 /**
@@ -32,6 +32,8 @@ function ConnectForm({ network, onDone }: { network: NetworkId; onDone: () => vo
   // Offered only when the service enables it (app review demos): pins and boards then live in Pinterest's sandbox.
   const sandboxOffered = network === "pinterest" && accounts.data?.find((a) => a.network === "pinterest")?.sandboxAvailable === true
   const [sandbox, setSandbox] = useState(false)
+  const connectToken = useConnectPinterestSandboxToken()
+  const [token, setToken] = useState("")
 
   return (
     <div className="grid gap-4">
@@ -54,6 +56,44 @@ function ConnectForm({ network, onDone }: { network: NetworkId; onDone: () => vo
             <span className="block text-xs text-muted-foreground">Boards and pins are created in Pinterest&apos;s sandbox and are only visible to you. Nothing is published publicly.</span>
           </span>
         </label>
+      ) : null}
+      {sandboxOffered && sandbox ? (
+        <div className="grid gap-2 rounded-xl border border-border p-3">
+          <label htmlFor="sandbox-token" className="text-sm font-medium">
+            Sandbox access token (to create boards and pins)
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Pinterest lets Trial apps write only with a Sandbox token. Generate one in the Pinterest developer portal: My apps, Manage, Configure, Generate access token, Sandbox. Paste it here instead of signing in.
+          </p>
+          <input
+            id="sandbox-token"
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+            placeholder="Paste the Sandbox token"
+            className="h-10 w-full rounded-xl border border-input bg-card px-3.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={connectToken.isPending || token.trim().length === 0}
+            onClick={() =>
+              connectToken.mutate(token, {
+                onSuccess: () => {
+                  toast.success("Pinterest connected through the sandbox.")
+                  setToken("")
+                  onDone()
+                },
+                // Failures are toasted once by the global mutation handler.
+              })
+            }
+          >
+            {connectToken.isPending ? "Checking the token…" : "Connect with this token"}
+          </Button>
+        </div>
       ) : null}
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onDone}>
