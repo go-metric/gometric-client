@@ -76,7 +76,7 @@ export function AccountsSettings() {
                   <p className="text-sm font-semibold">{network.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {linked
-                      ? `${account.handle} · ${account.followers ? `${formatCompact(account.followers)} followers` : "Followers not reported yet"}`
+                      ? `${account.handle} · ${account.followers != null ? `${formatCompact(account.followers)} followers` : "Followers not reported yet"}`
                       : account.available === false
                         ? (account.unavailableReason ?? "Not available yet")
                         : network.accountLabel}
