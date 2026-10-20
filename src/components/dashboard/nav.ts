@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { BarChart3, CalendarDays, Inbox, LayoutDashboard, PenSquare, Settings } from "lucide-react"
+import { BarChart3, CalendarDays, FileText, Inbox, LayoutDashboard, PenSquare, Settings } from "lucide-react"
 import { routes } from "@/config/site"
 
 export type DashboardNavItem = {
@@ -16,6 +16,7 @@ export const dashboardNav: DashboardNavItem[] = [
   { href: routes.dashboard.compose, label: "Compose", Icon: PenSquare },
   { href: routes.dashboard.inbox, label: "Inbox", Icon: Inbox, showUnread: true },
   { href: routes.dashboard.analytics, label: "Analytics", Icon: BarChart3 },
+  { href: routes.dashboard.reports, label: "Reports", Icon: FileText },
 ]
 
 export const dashboardFooterNav: DashboardNavItem[] = [

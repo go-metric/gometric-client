@@ -447,3 +447,31 @@ export type Billing = {
 export type BillingSnapshot = Billing & {
   usage: BillingUsage
 }
+
+export type ReportSection = "summary" | "networks" | "trends" | "posts" | "audience"
+export type ReportFrequency = "weekly" | "monthly"
+
+export type ReportSchedule = {
+  id: string
+  brandId: string
+  name: string
+  frequency: ReportFrequency
+  /** 1 = Monday ... 7 = Sunday. */
+  weekday: number
+  dayOfMonth: number
+  /** Hour of day in the brand's timezone. */
+  hour: number
+  rangeDays: number
+  /** Empty means every section. */
+  sections: ReportSection[]
+  recipients: string[]
+  enabled: boolean
+  nextRunAt: string
+  lastSentAt: string | null
+  lastError: string | null
+}
+
+export type ReportScheduleInput = Pick<ReportSchedule, "name" | "frequency" | "recipients"> &
+  Partial<Pick<ReportSchedule, "weekday" | "dayOfMonth" | "hour" | "rangeDays" | "sections" | "enabled">>
+
+export type ReportPdfParams = { range?: number; end?: string; network?: NetworkId; sections?: ReportSection[] }

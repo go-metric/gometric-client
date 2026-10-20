@@ -22,5 +22,6 @@ export const queryKeys = {
     all: ["analytics"] as const,
     report: (params: AnalyticsParams) => ["analytics", "report", params] as const,
   },
+  reports: ["reports"] as const,
   billing: ["billing"] as const,
 }

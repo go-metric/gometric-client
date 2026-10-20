@@ -144,6 +144,30 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
   return data as T
 }
 
+/**
+ * Downloads a binary response (e.g. a PDF) with the same auth and brand headers as `api()`.
+ * Errors come back as JSON, so they surface with the server's message.
+ */
+export async function apiDownload(path: string): Promise<{ blob: Blob; filename: string }> {
+  const base = apiBaseUrl()
+  if (!base) throw new ApiError("API base URL is not configured. Check src/config/api.ts.", 500)
+  const headers = new Headers()
+  const token = getAccessToken()
+  if (token) headers.set("Authorization", `Bearer ${token}`)
+  const brandId = getActiveBrandId()
+  if (brandId) headers.set("X-Active-Brand-Id", brandId)
+
+  const res = await fetch(`${base}${path}`, { credentials: "include", headers })
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { message?: string }
+    if (res.status === 401) handleUnauthorized()
+    throw new ApiError(data.message ?? "Download failed.", res.status)
+  }
+  const disposition = res.headers.get("Content-Disposition") ?? ""
+  const filename = /filename="?([^";]+)"?/i.exec(disposition)?.[1] ?? "report.pdf"
+  return { blob: await res.blob(), filename }
+}
+
 export function toQuery(params: Record<string, string | number | undefined | null>) {
   const q = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
