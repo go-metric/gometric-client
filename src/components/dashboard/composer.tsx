@@ -151,6 +151,8 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
   const boards = usePinterestBoards(selected.includes("pinterest"))
   const pinterest = (options.pinterest ?? {}) as { boardId?: string; link?: string; title?: string }
   const setPinterest = (patch: Partial<typeof pinterest>) => setOptions((prev) => ({ ...prev, pinterest: { ...pinterest, ...patch } }))
+  const youtube = (options.youtube ?? {}) as { title?: string; privacy?: "public" | "unlisted" | "private" }
+  const setYoutube = (patch: Partial<typeof youtube>) => setOptions((prev) => ({ ...prev, youtube: { ...youtube, ...patch } }))
 
   const toggleNetwork = (id: NetworkId) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((n) => n !== id) : [...prev, id]))
@@ -405,6 +407,34 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
             </div>
           ) : null}
 
+          {selected.includes("youtube") ? (
+            <div className="mt-4 grid gap-4 rounded-2xl border border-border p-4 sm:grid-cols-2">
+              <FormField id="yt-title" label="YouTube title" hint="Defaults to the first line of your caption. Up to 100 characters.">
+                <input
+                  id="yt-title"
+                  type="text"
+                  maxLength={100}
+                  value={youtube.title ?? ""}
+                  onChange={(e) => setYoutube({ title: e.target.value })}
+                  placeholder="Video title"
+                  className="h-10 w-full rounded-xl border border-input bg-card px-3.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                />
+              </FormField>
+              <FormField id="yt-privacy" label="YouTube visibility">
+                <select
+                  id="yt-privacy"
+                  className={selectClassName}
+                  value={youtube.privacy ?? "public"}
+                  onChange={(e) => setYoutube({ privacy: e.target.value as "public" | "unlisted" | "private" })}
+                >
+                  <option value="public">Public</option>
+                  <option value="unlisted">Unlisted</option>
+                  <option value="private">Private</option>
+                </select>
+              </FormField>
+            </div>
+          ) : null}
+
           {post && post.deliveries.some((d) => d.status === "failed") ? (
             <ul role="alert" className="mt-4 space-y-1 rounded-2xl bg-destructive/8 p-3 text-sm text-destructive">
               <li className="font-semibold">These networks didn&apos;t publish:</li>
@@ -608,6 +638,7 @@ const networkNotes: Partial<Record<NetworkId, (media: PostMedia[]) => string | n
   instagram: (m) => (m.length === 0 ? "Instagram needs at least one image or a video." : null),
   tiktok: (m) => (m.filter((x) => x.mimeType?.startsWith("video/")).length !== 1 ? "TikTok needs exactly one video." : null),
   pinterest: (m) => (m.length !== 1 ? "Pinterest pins need exactly one image." : null),
+  youtube: (m) => (m.filter((x) => x.mimeType?.startsWith("video/")).length !== 1 || m.some((x) => !x.mimeType?.startsWith("video/")) ? "YouTube needs exactly one video." : null),
   x: (m) => (m.length ? "X posting is text-only for now; remove the media or deselect X." : null),
   threads: (m) => (m.length ? "Threads posting is text-only for now; remove the media or deselect Threads." : null),
 }
