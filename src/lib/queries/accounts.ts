@@ -91,7 +91,7 @@ export const useDisconnectAccount = () => useAccountMutation((network: NetworkId
 
 /** Live TikTok profile; only fetched while the TikTok analytics tab is open and the account is connected. */
 export const useTikTokProfile = (enabled = true) =>
-  useQuery({ queryKey: queryKeys.tiktok.profile, queryFn: () => accountsApi.tiktokProfile(), enabled, staleTime: 5 * 60_000, retry: false })
+  useQuery({ queryKey: queryKeys.tiktok.profile, queryFn: () => accountsApi.tiktokProfile(), enabled, staleTime: 30_000, retry: false })
 
 export const useTikTokVideos = (enabled = true) =>
-  useQuery({ queryKey: queryKeys.tiktok.videos, queryFn: () => accountsApi.tiktokVideos(), enabled, staleTime: 5 * 60_000, retry: false })
+  useQuery({ queryKey: queryKeys.tiktok.videos, queryFn: () => accountsApi.tiktokVideos(), enabled, staleTime: 30_000, retry: false })

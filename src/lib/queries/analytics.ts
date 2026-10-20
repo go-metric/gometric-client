@@ -24,7 +24,12 @@ export function useSyncAnalytics() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => analyticsApi.sync(),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all }),
+        // "Refresh data" also reloads the live TikTok profile and video list.
+        queryClient.invalidateQueries({ queryKey: ["tiktok"] }),
+      ]),
   })
 }
 
