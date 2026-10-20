@@ -186,7 +186,8 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
     if (!accepted.length) return
     try {
       const items = await Promise.all(accepted.map((file) => mediaApi.upload(file)))
-      setMedia((prev) => [...prev, ...items])
+      // The browser knows the file type even when the API response omits it; the preview depends on it.
+      setMedia((prev) => [...prev, ...items.map((item, i) => ({ ...item, mimeType: item.mimeType ?? accepted[i]?.type }))])
     } catch (error) {
       toast.error(errorMessage(error))
     }
