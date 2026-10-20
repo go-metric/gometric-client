@@ -96,6 +96,15 @@ export const usePostLogs = (id: string | null, enabled = true) =>
 export const usePinterestBoards = (enabled: boolean) =>
   useQuery({ queryKey: ["posts", "pinterest-boards"], queryFn: () => postsApi.pinterestBoards(), enabled, staleTime: 5 * 60_000, retry: false })
 
+/** Creates a Pinterest board and refreshes the board list so the new one can be chosen straight away. */
+export function useCreatePinterestBoard() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { name: string; privacy: "PUBLIC" | "SECRET" }) => postsApi.createPinterestBoard(input),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["posts", "pinterest-boards"] }),
+  })
+}
+
 /** Optimistic so drag-and-drop on the planner feels instant. */
 export function useReschedulePost() {
   const queryClient = useQueryClient()

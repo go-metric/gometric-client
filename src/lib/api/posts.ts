@@ -55,4 +55,8 @@ export const postsApi = {
   pinterestBoards() {
     return api<PinterestBoard[]>("/posts/options/pinterest-boards")
   },
+
+  createPinterestBoard(input: { name: string; privacy: "PUBLIC" | "SECRET" }) {
+    return api<PinterestBoard>("/posts/options/pinterest-boards", { method: "POST", body: JSON.stringify(input) })
+  },
 }

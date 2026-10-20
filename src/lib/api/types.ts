@@ -77,6 +77,10 @@ export type SocialAccount = {
   capabilities?: Record<CapabilityFeature, CapabilityState>
   /** False for networks that aren't integrated yet; they can't be connected. */
   available?: boolean
+  /** Pinterest only: this connection uses the Pinterest API sandbox (app review demos). */
+  testMode?: "sandbox" | null
+  /** Pinterest only: whether connecting through the sandbox is offered. */
+  sandboxAvailable?: boolean
   unavailableReason?: string | null
   /** Whether this account feeds the inbox and analytics. */
   preferences?: { inbox: boolean; analytics: boolean }

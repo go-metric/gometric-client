@@ -73,7 +73,14 @@ export function AccountsSettings() {
               <li key={account.network} className="flex flex-wrap items-center gap-3 py-4 first:pt-0 last:pb-0 sm:gap-4">
                 <NetworkTile network={account.network} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold">{network.name}</p>
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    {network.name}
+                    {linked && account.testMode === "sandbox" ? (
+                      <span title="This connection uses Pinterest's API sandbox. Nothing is published publicly." className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-400/20 dark:text-amber-200">
+                        Sandbox
+                      </span>
+                    ) : null}
+                  </p>
                   <p className="truncate text-xs text-muted-foreground">
                     {linked
                       ? `${account.handle} · ${account.followers != null ? `${formatCompact(account.followers)} followers` : "Followers not reported yet"}`

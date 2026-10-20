@@ -41,8 +41,9 @@ const REFRESHABLE_NETWORKS = new Set<NetworkId>(["x", "tiktok", "pinterest"])
 /** Starts OAuth and navigates the browser to the provider's consent screen. */
 export function useStartOAuth() {
   return useMutation({
-    mutationFn: async (network: NetworkId) => {
-      const redirectUrl = await accountsApi.startOAuth(network)
+    mutationFn: async (input: NetworkId | { network: NetworkId; sandbox?: boolean }) => {
+      const { network, sandbox } = typeof input === "string" ? { network: input, sandbox: false } : input
+      const redirectUrl = await accountsApi.startOAuth(network, { sandbox })
       window.location.href = redirectUrl
       return redirectUrl
     },

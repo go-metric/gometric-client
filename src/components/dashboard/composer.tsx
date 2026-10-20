@@ -23,7 +23,7 @@ import { useBrandTimeZone } from "@/hooks/use-brand-timezone"
 import { useLinkedAccounts } from "@/lib/queries/accounts"
 import { useBilling } from "@/lib/queries/billing"
 import { useAnalyticsReport } from "@/lib/queries/analytics"
-import { useCreatePost, usePinterestBoards, usePost, usePosts, useUpdatePost } from "@/lib/queries/posts"
+import { useCreatePinterestBoard, useCreatePost, usePinterestBoards, usePost, usePosts, useUpdatePost } from "@/lib/queries/posts"
 import { errorMessage } from "@/lib/api/errors"
 import { mediaApi } from "@/lib/api/media"
 import { activeBrand } from "@/lib/api/workspace"
@@ -149,6 +149,8 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
   const value = activeTab === "all" ? body : (overrides[activeTab] ?? body)
   const saving = create.isPending || update.isPending
   const boards = usePinterestBoards(selected.includes("pinterest"))
+  const createBoard = useCreatePinterestBoard()
+  const [newBoard, setNewBoard] = useState<{ name: string; privacy: "PUBLIC" | "SECRET" } | null>(null)
   const pinterest = (options.pinterest ?? {}) as { boardId?: string; link?: string; title?: string }
   const setPinterest = (patch: Partial<typeof pinterest>) => setOptions((prev) => ({ ...prev, pinterest: { ...pinterest, ...patch } }))
   const youtube = (options.youtube ?? {}) as { title?: string; privacy?: "public" | "unlisted" | "private" }
@@ -395,6 +397,63 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
                   ))}
                 </select>
               </FormField>
+              <div className="sm:col-span-2">
+                {newBoard ? (
+                  <div className="grid gap-3 rounded-xl bg-muted/50 p-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+                    <FormField id="new-board-name" label="New board name">
+                      <input
+                        id="new-board-name"
+                        type="text"
+                        maxLength={50}
+                        value={newBoard.name}
+                        onChange={(e) => setNewBoard({ ...newBoard, name: e.target.value })}
+                        placeholder="e.g. Product launches"
+                        className="h-10 w-full rounded-xl border border-input bg-card px-3.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                      />
+                    </FormField>
+                    <FormField id="new-board-privacy" label="Visibility">
+                      <select
+                        id="new-board-privacy"
+                        className={selectClassName}
+                        value={newBoard.privacy}
+                        onChange={(e) => setNewBoard({ ...newBoard, privacy: e.target.value as "PUBLIC" | "SECRET" })}
+                      >
+                        <option value="SECRET">Secret</option>
+                        <option value="PUBLIC">Public</option>
+                      </select>
+                    </FormField>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={createBoard.isPending || !newBoard.name.trim()}
+                        onClick={() =>
+                          createBoard.mutate(
+                            { name: newBoard.name.trim(), privacy: newBoard.privacy },
+                            {
+                              onSuccess: (board) => {
+                                setPinterest({ boardId: board.id })
+                                setNewBoard(null)
+                                toast.success(`Board "${board.name}" created.`)
+                              },
+                              onError: (error) => toast.error(errorMessage(error)),
+                            }
+                          )
+                        }
+                      >
+                        {createBoard.isPending ? "Creating…" : "Create board"}
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" onClick={() => setNewBoard(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button type="button" size="sm" variant="outline" disabled={!!boards.error} onClick={() => setNewBoard({ name: "", privacy: "SECRET" })}>
+                    + New board
+                  </Button>
+                )}
+              </div>
               <FormField id="pin-link" label="Destination link (optional)">
                 <input
                   id="pin-link"

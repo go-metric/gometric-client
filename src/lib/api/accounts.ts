@@ -8,8 +8,8 @@ export const accountsApi = {
   },
 
   /** Returns the provider consent URL; the service handles the callback and redirects back to settings. */
-  async startOAuth(network: NetworkId) {
-    const { redirectUrl } = await api<{ redirectUrl: string }>(`/accounts/${network}/oauth/start`)
+  async startOAuth(network: NetworkId, opts: { sandbox?: boolean } = {}) {
+    const { redirectUrl } = await api<{ redirectUrl: string }>(`/accounts/${network}/oauth/start${opts.sandbox ? "?sandbox=1" : ""}`)
     return redirectUrl
   },
 
