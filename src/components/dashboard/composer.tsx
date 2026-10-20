@@ -151,6 +151,9 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
   const boards = usePinterestBoards(selected.includes("pinterest"))
   const createBoard = useCreatePinterestBoard()
   const [newBoard, setNewBoard] = useState<{ name: string; privacy: "PUBLIC" | "SECRET" } | null>(null)
+  // Boards made here stay pickable even when Pinterest can't list boards (the sandbox refuses to).
+  const [madeBoards, setMadeBoards] = useState<{ id: string; name: string }[]>([])
+  const boardOptions = [...(boards.data ?? []), ...madeBoards.filter((m) => !boards.data?.some((b) => b.id === m.id))]
   const pinterest = (options.pinterest ?? {}) as { boardId?: string; link?: string; title?: string }
   const setPinterest = (patch: Partial<typeof pinterest>) => setOptions((prev) => ({ ...prev, pinterest: { ...pinterest, ...patch } }))
   const youtube = (options.youtube ?? {}) as { title?: string; privacy?: "public" | "unlisted" | "private" }
@@ -390,7 +393,7 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
                   onChange={(e) => setPinterest({ boardId: e.target.value })}
                 >
                   <option value="">{boards.isLoading ? "Loading boards…" : "Choose a board"}</option>
-                  {boards.data?.map((b) => (
+                  {boardOptions.map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}
                     </option>
@@ -432,6 +435,7 @@ function ComposerForm({ post, date, accounts }: { post: Post | null; date: strin
                             { name: newBoard.name.trim(), privacy: newBoard.privacy },
                             {
                               onSuccess: (board) => {
+                                setMadeBoards((prev) => [...prev, { id: board.id, name: board.name }])
                                 setPinterest({ boardId: board.id })
                                 setNewBoard(null)
                                 toast.success(`Board "${board.name}" created.`)
