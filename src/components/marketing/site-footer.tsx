@@ -33,9 +33,17 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <Container className="flex flex-col gap-2 py-6 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between">
           <p>© <CurrentYear /> {siteConfig.name}. All rights reserved.</p>
-          <a href={`mailto:${siteConfig.supportEmail}`} className="hover:text-white">
-            {siteConfig.supportEmail}
-          </a>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <Link href="/privacy" className="hover:text-white">
+              Privacy policy
+            </Link>
+            <Link href="/terms" className="hover:text-white">
+              Terms
+            </Link>
+            <a href={`mailto:${siteConfig.supportEmail}`} className="hover:text-white">
+              {siteConfig.supportEmail}
+            </a>
+          </div>
         </Container>
       </div>
     </footer>
