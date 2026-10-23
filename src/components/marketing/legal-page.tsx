@@ -8,10 +8,13 @@ export function LegalPage({
   title,
   updated,
   sections,
+  draft = false,
 }: {
   title: string
   updated: string
   sections: LegalSection[]
+  /** Show a “needs legal review” banner. Keep off for pages submitted to Google / Meta review. */
+  draft?: boolean
 }) {
   return (
     <Container className="pt-16 pb-24 sm:pt-24 sm:pb-32">
@@ -19,10 +22,12 @@ export function LegalPage({
         <Eyebrow>Legal</Eyebrow>
         <h1 className="mt-5 text-5xl leading-[1.05] tracking-[-0.035em] sm:text-6xl">{title}</h1>
         <p className="mt-4 text-muted-foreground">Last updated {updated}</p>
-        <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-dashed border-foreground/30 px-4 py-1.5 text-xs font-medium text-muted-foreground">
-          <TriangleAlert className="size-3.5 text-brand" />
-          Placeholder text. Needs legal review before launch
-        </p>
+        {draft ? (
+          <p className="mt-6 inline-flex items-center gap-2 rounded-full border border-dashed border-foreground/30 px-4 py-1.5 text-xs font-medium text-muted-foreground">
+            <TriangleAlert className="size-3.5 text-brand" />
+            Placeholder text. Needs legal review before launch
+          </p>
+        ) : null}
       </header>
 
       <div className="mt-14 grid gap-12 lg:grid-cols-[14rem_minmax(0,1fr)] lg:gap-16">
