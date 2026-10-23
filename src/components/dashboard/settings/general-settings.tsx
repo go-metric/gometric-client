@@ -24,16 +24,6 @@ export function GeneralSettings() {
     <div className="space-y-4">
       {brand ? <BrandForm brand={brand} /> : <NoActiveBrand />}
       <ProfileForm workspace={data} />
-      <Panel title="Privacy">
-        <p className="text-sm text-muted-foreground">
-          How gometric collects, uses, stores, and deletes account data and Google/YouTube user data.
-        </p>
-        <div className="mt-3">
-          <ButtonLink href="/privacy" variant="outline" size="sm" target="_blank" rel="noopener noreferrer">
-            View privacy policy
-          </ButtonLink>
-        </div>
-      </Panel>
     </div>
   )
 }
