@@ -7,9 +7,6 @@ export const metadata: Metadata = {
   description: `How ${siteConfig.name} collects, uses, stores, and shares your information, including Google and YouTube user data under the Google API Services User Data Policy (Limited Use).`,
 }
 
-/** Keep short so Google’s OAuth crawler picks up policy updates quickly. */
-export const revalidate = 60
-
 const sections: LegalSection[] = [
   {
     id: "overview",
