@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
-import { CreditCard, Link2, LogOut, Settings } from "lucide-react"
+import { CreditCard, Link2, LogOut, Settings, Shield } from "lucide-react"
 import { toast } from "sonner"
 import {
   DropdownMenu,
@@ -66,6 +66,10 @@ export function UserMenu() {
         <DropdownMenuItem className="py-1.5" onClick={() => router.push(routes.dashboard.billing)}>
           <CreditCard />
           Billing
+        </DropdownMenuItem>
+        <DropdownMenuItem className="py-1.5" onClick={() => window.open("/privacy", "_blank", "noopener,noreferrer")}>
+          <Shield />
+          Privacy policy
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem className="py-1.5" variant="destructive" onClick={() => void logout()}>
