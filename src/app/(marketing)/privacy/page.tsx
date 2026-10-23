@@ -54,7 +54,7 @@ const sections: LegalSection[] = [
       "Google user data we may receive when you connect YouTube (subject to the scopes you approve) includes: your Google account identifiers needed for OAuth; YouTube channel id, title, custom URL or handle, and thumbnail; video metadata and status for videos you manage through the Service; comment threads you choose to view or reply to; and aggregated analytics metrics such as views and engagement for your channel or videos.",
       `${siteConfig.name}'s use and transfer to any other app of information received from Google APIs will adhere to the Google API Services User Data Policy, including the Limited Use requirements.`,
       "We do not use Google or YouTube data to serve ads. We do not sell Google or YouTube user data. We do not allow humans to read Google user data unless you give us permission for support, it is necessary for security or compliance, or we are required to by law — and then only with appropriate access controls.",
-      "You can revoke ${siteConfig.name}'s access to your Google Account at any time in your Google Account permissions (https://myaccount.google.com/permissions) and by disconnecting YouTube inside Settings → Accounts in the Service.",
+      `You can revoke ${siteConfig.name}'s access to your Google Account at any time in your Google Account permissions (https://myaccount.google.com/permissions) and by disconnecting YouTube inside Settings → Accounts in the Service.`,
     ],
   },
   {
@@ -99,7 +99,7 @@ const sections: LegalSection[] = [
     body: [
       "You can access and update much of your account and brand information in Settings.",
       "You can disconnect any social network from Settings → Accounts. Disconnecting stops new API access with that connection; content already published on the network remains under that network's control.",
-      "You can request access, correction, deletion, or export of personal information we hold about you, or object to certain processing, by emailing ${siteConfig.supportEmail}. We may need to verify your identity before fulfilling a request.",
+      `You can request access, correction, deletion, or export of personal information we hold about you, or object to certain processing, by emailing ${siteConfig.supportEmail}. We may need to verify your identity before fulfilling a request.`,
       "Depending on where you live, you may have additional rights under local law (for example GDPR or CCPA). We will honor applicable requests.",
       "You can unsubscribe from non-essential marketing emails using the link in those emails. Transactional emails related to your account will still be sent as needed to operate the Service.",
     ],
